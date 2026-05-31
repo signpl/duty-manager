@@ -101,7 +101,8 @@ export default function DayModal({date,schedule,members,onClose,onSaved}:Props) 
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">당번 1</p>
               <div className="grid grid-cols-2 gap-2">
                 {opts1.map((x,i)=>{
-                  const c = getMemberColor(members.findIndex(m=>m.id===x.id))
+                  const idx1 = members.findIndex(m=>m.id===x.id)
+                  const c = getMemberColor(idx1)
                   const sel = m1===x.id
                   return (
                     <button key={x.id} onClick={()=>setM1(sel?'':x.id)}
@@ -131,7 +132,8 @@ export default function DayModal({date,schedule,members,onClose,onSaved}:Props) 
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">당번 2</p>
               <div className="grid grid-cols-2 gap-2">
                 {opts2.map((x,i)=>{
-                  const c = getMemberColor(members.findIndex(m=>m.id===x.id))
+                  const idx2 = members.findIndex(m=>m.id===x.id)
+                  const c = getMemberColor(idx2)
                   const sel = m2===x.id
                   return (
                     <button key={x.id} onClick={()=>setM2(sel?'':x.id)}

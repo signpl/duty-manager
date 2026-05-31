@@ -67,7 +67,12 @@ export default function CalendarClient() {
 
   const getSch = (d:string) => schedules.find(s=>s.date===d)||null
   const getMember = (id:string|null) => id ? members.find(m=>m.id===id)||null : null
-  const getMemberIdx = (id:string|null) => id ? members.findIndex(m=>m.id===id) : -1
+  // -1이 나와도 getMemberColor가 방어하지만 명시적으로 0 이상으로 보장
+  const getMemberIdx = (id:string|null) => {
+    if (!id) return 0
+    const idx = members.findIndex(m=>m.id===id)
+    return idx >= 0 ? idx : 0
+  }
 
   const firstDay = new Date(yr,mo,1).getDay()
   const lastDate = new Date(yr,mo+1,0).getDate()
@@ -108,7 +113,7 @@ export default function CalendarClient() {
             {userName&&(
               <button onClick={()=>setShowNameModal(true)}
                 className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white touch-manipulation"
-                style={{background: getMemberColor(members.findIndex(m=>m.name===userName)).bg}}>
+                style={{background: getMemberColor(members.findIndex(m=>m.name===userName)).bg || '#6366f1'}}>
                 {userName[0]}
               </button>
             )}

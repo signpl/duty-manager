@@ -11,5 +11,7 @@ export const MEMBER_COLORS = [
 ]
 
 export function getMemberColor(index: number) {
-  return MEMBER_COLORS[index % MEMBER_COLORS.length]
+  // 음수(-1 등) 방어 처리
+  const i = ((index % MEMBER_COLORS.length) + MEMBER_COLORS.length) % MEMBER_COLORS.length
+  return MEMBER_COLORS[i]
 }
