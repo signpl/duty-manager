@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getMemberColor } from '@/lib/colors'
 import { getHolidayName, isRedDay } from '@/lib/holidays'
@@ -8,39 +8,91 @@ import { getHolidayName, isRedDay } from '@/lib/holidays'
 interface Member { id: string; name: string }
 interface Schedule {
   id: string; date: string
-  member1_id: string | null; member2_id: string | null
-  is_off: boolean; note: string | null
+  member1_id: string|null; member2_id: string|null
+  is_off: boolean; note: string|null
 }
 interface Props {
-  date: string; schedule: Schedule | null; members: Member[]
-  onClose: () => void; onSaved: () => void
+  date: string; schedule: Schedule|null; members: Member[]
+  onClose: ()=>void; onSaved: ()=>void
 }
 
-const DAYS = ['일', '월', '화', '수', '목', '금', '토']
+const DAYS = ['일','월','화','수','목','금','토']
+
+// 이모지 목록
+const EMOJI_LIST = [
+  '✅','❌','⚠️','📌','🔔','💡','⭐','🔥',
+  '😊','😅','😢','😡','🙏','👍','👎','💪',
+  '📋','📝','📞','📅','🏥','💊','🚗','🏠',
+  '☀️','🌙','🌸','🍀','❄️','🌈','💧','🎉',
+]
+
+const parseMemo = (note: string|null): string[] => {
+  if (!note) return ['']
+  const lines = note.split('\n').filter((_, i, arr) => i < arr.length)
+  return lines.length > 0 ? lines : ['']
+}
+
+const joinMemo = (items: string[]): string =>
+  items.filter(s => s.trim()).join('\n')
 
 export default function DayModal({ date, schedule, members, onClose, onSaved }: Props) {
   const [m1, setM1] = useState(schedule?.member1_id || '')
   const [m2, setM2] = useState(schedule?.member2_id || '')
   const [isOff, setIsOff] = useState(schedule?.is_off || false)
-  const [note, setNote] = useState(schedule?.note || '')
+  const [memoItems, setMemoItems] = useState<string[]>(parseMemo(schedule?.note || null))
   const [saving, setSaving] = useState(false)
+  const [showEmoji, setShowEmoji] = useState<number|null>(null) // 몇 번째 항목에 이모지 열었는지
+  const inputRefs = useRef<(HTMLInputElement|null)[]>([])
 
   const supabase = createClient()
   const [y, mo, d] = date.split('-').map(Number)
-  const dow = new Date(y, mo - 1, d).getDay()
+  const dow = new Date(y, mo-1, d).getDay()
   const isSat = dow === 6
   const holiday = getHolidayName(date)
   const isRed = isRedDay(date, dow)
-  const dateColor = isRed ? '#EF4444' : isSat ? '#3B82F6' : '#111827'
+  const dateColor = isRed ? '#C0392B' : isSat ? '#2563EB' : '#111827'
+
+  // 항목 변경
+  const updateItem = (idx: number, val: string) => {
+    const next = [...memoItems]
+    next[idx] = val
+    setMemoItems(next)
+  }
+
+  // Enter → 새 항목 추가
+  const handleKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const next = [...memoItems]
+      next.splice(idx+1, 0, '')
+      setMemoItems(next)
+      setTimeout(() => inputRefs.current[idx+1]?.focus(), 30)
+    }
+    if (e.key === 'Backspace' && memoItems[idx] === '' && memoItems.length > 1) {
+      e.preventDefault()
+      const next = memoItems.filter((_,i) => i !== idx)
+      setMemoItems(next)
+      setTimeout(() => inputRefs.current[Math.max(0, idx-1)]?.focus(), 30)
+    }
+  }
+
+  // 이모지 삽입
+  const insertEmoji = (idx: number, emoji: string) => {
+    const next = [...memoItems]
+    next[idx] = emoji + ' ' + next[idx]
+    setMemoItems(next)
+    setShowEmoji(null)
+    setTimeout(() => inputRefs.current[idx]?.focus(), 30)
+  }
 
   const save = async () => {
     setSaving(true)
     const payload = {
       date,
-      member1_id: isOff ? null : (m1 || null),
-      member2_id: isOff ? null : (m2 || null),
+      member1_id: isOff ? null : (m1||null),
+      member2_id: isOff ? null : (m2||null),
       is_off: isOff,
-      note: note.trim() || null,
+      note: joinMemo(memoItems) || null,
     }
     if (schedule) await supabase.from('schedules').update(payload).eq('id', schedule.id)
     else await supabase.from('schedules').insert(payload)
@@ -57,144 +109,167 @@ export default function DayModal({ date, schedule, members, onClose, onSaved }: 
   const opts2 = members.filter(x => !m1 || x.id !== m1)
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
-      {/* 딤 */}
-      <div
-        style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }}
-        onClick={onClose}
-      />
+    <div style={{ position:'fixed', inset:0, zIndex:9999 }}>
+      <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)' }} onClick={onClose}/>
 
-      {/* 바텀시트 — 강제 라이트모드 + 완전 불투명 */}
-      <div
-        className="sheet-up"
-        style={{
-          position: 'absolute',
-          bottom: 0, left: 0, right: 0,
-          background: '#ffffff',
-          colorScheme: 'light',
-          borderRadius: '20px 20px 0 0',
-          maxHeight: '85dvh',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
-        }}
-      >
+      <div className="sheet-up" style={{
+        position:'absolute', bottom:0, left:0, right:0,
+        background:'#ffffff', colorScheme:'light',
+        borderRadius:'20px 20px 0 0',
+        maxHeight:'92dvh', display:'flex', flexDirection:'column',
+        boxShadow:'0 -8px 40px rgba(0,0,0,0.2)',
+      }}>
         {/* 핸들 */}
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px', flexShrink: 0 }}>
-          <div style={{ width: 36, height: 4, borderRadius: 99, background: '#D1D5DB' }} />
+        <div style={{ display:'flex', justifyContent:'center', padding:'10px 0 4px', flexShrink:0 }}>
+          <div style={{ width:36, height:4, borderRadius:99, background:'#D1D5DB' }}/>
         </div>
 
-        <div style={{ overflowY: 'auto', flex: 1, padding: '8px 20px 32px', colorScheme: 'light' }}>
+        <div style={{ overflowY:'auto', flex:1, padding:'6px 20px 36px', colorScheme:'light' }}>
 
-          {/* ── 날짜 헤더 ── */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 24, fontWeight: 900, color: dateColor, lineHeight: 1 }}>{d}일</span>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#6B7280' }}>{mo}월 {DAYS[dow]}요일</span>
-              {holiday && (
-                <span style={{
-                  fontSize: 11, fontWeight: 700,
-                  color: '#DC2626', background: '#FEE2E2',
-                  padding: '2px 8px', borderRadius: 99,
-                }}>
-                  {holiday}
-                </span>
-              )}
+          {/* 날짜 헤더 */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+              <span style={{ fontSize:26, fontWeight:900, color:dateColor, lineHeight:1 }}>{d}일</span>
+              <span style={{ fontSize:14, fontWeight:600, color:'#6B7280' }}>{mo}월 {DAYS[dow]}요일</span>
+              {holiday&&<span style={{ fontSize:11, fontWeight:700, color:'#DC2626', background:'#FEE2E2', padding:'2px 8px', borderRadius:99 }}>{holiday}</span>}
             </div>
-            {schedule && (
-              <button onClick={del} style={{
-                padding: '6px 14px', borderRadius: 99,
-                background: '#FEE2E2', color: '#EF4444',
-                fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
-                flexShrink: 0,
-              }}>삭제</button>
+            {schedule&&(
+              <button onClick={del} style={{ padding:'6px 14px', borderRadius:99, background:'#FEE2E2', color:'#EF4444', fontSize:13, fontWeight:700, border:'none', cursor:'pointer', flexShrink:0 }}>삭제</button>
             )}
           </div>
 
-          {/* ── 휴무 토글 (한 줄 컴팩트) ── */}
-          <button
-            onClick={() => setIsOff(!isOff)}
-            style={{
-              width: '100%',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '10px 14px', borderRadius: 12, marginBottom: 14,
-              background: isOff ? '#FFFBEB' : '#F9FAFB',
-              border: `1.5px solid ${isOff ? '#FCD34D' : '#E5E7EB'}`,
-              cursor: 'pointer', boxSizing: 'border-box',
-            }}
-          >
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#374151', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span>{isOff ? '😴' : '🗓️'}</span>
+          {/* 휴무 토글 */}
+          <button onClick={()=>setIsOff(!isOff)} style={{
+            width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between',
+            padding:'10px 14px', borderRadius:12, marginBottom:14, cursor:'pointer',
+            background:isOff?'#FFFBEB':'#F9FAFB',
+            border:`1.5px solid ${isOff?'#FCD34D':'#E5E7EB'}`,
+          }}>
+            <span style={{ fontSize:14, fontWeight:700, color:'#374151', display:'flex', alignItems:'center', gap:8 }}>
+              <span>{isOff?'😴':'🗓️'}</span>
               휴무일
-              {isOff && <span style={{ fontSize: 12, color: '#F59E0B', fontWeight: 600 }}>설정됨</span>}
+              {isOff&&<span style={{ fontSize:12, color:'#F59E0B', fontWeight:600 }}>설정됨</span>}
             </span>
-            {/* 미니 스위치 */}
-            <div style={{
-              width: 40, height: 22, borderRadius: 99, position: 'relative',
-              background: isOff ? '#F59E0B' : '#D1D5DB', flexShrink: 0,
-              transition: 'background 0.2s',
-            }}>
-              <div style={{
-                position: 'absolute', top: 2,
-                left: isOff ? 20 : 2,
-                width: 18, height: 18, borderRadius: '50%',
-                background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                transition: 'left 0.2s',
-              }} />
+            <div style={{ width:40, height:22, borderRadius:99, position:'relative', background:isOff?'#F59E0B':'#D1D5DB', flexShrink:0, transition:'background 0.2s' }}>
+              <div style={{ position:'absolute', top:2, left:isOff?20:2, width:18, height:18, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,0.2)', transition:'left 0.2s' }}/>
             </div>
           </button>
 
-          {/* ── 당번 선택 ── */}
-          {!isOff && (
+          {/* 당번 선택 */}
+          {!isOff&&(
             <>
-              <PickerRow
-                label="당번 1" selected={m1}
-                options={opts1} members={members}
-                onSelect={setM1}
-              />
-              <PickerRow
-                label="당번 2" selected={m2}
-                options={opts2} members={members}
-                onSelect={setM2}
-              />
+              <PickerRow label="당번 1" selected={m1} options={opts1} members={members} onSelect={setM1}/>
+              <PickerRow label="당번 2" selected={m2} options={opts2} members={members} onSelect={setM2}/>
             </>
           )}
 
-          {/* ── 메모 ── */}
-          <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>
-              메모
+          {/* ── 메모 (항목별 입력) ── */}
+          <div style={{ marginBottom:20 }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+              <div style={{ fontSize:11, fontWeight:800, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em' }}>메모</div>
+              <div style={{ fontSize:10, color:'#9CA3AF' }}>Enter로 항목 추가</div>
             </div>
-            <input
-              type="text" value={note}
-              onChange={e => setNote(e.target.value)}
-              placeholder="특이사항 (선택)"
-              style={{
-                width: '100%', padding: '11px 14px', borderRadius: 12,
-                background: '#F3F4F6', border: '1.5px solid transparent',
-                fontSize: 14, color: '#111827', outline: 'none',
-                boxSizing: 'border-box', colorScheme: 'light',
-              }}
-              onFocus={e => { e.target.style.background = '#fff'; e.target.style.borderColor = '#6366f1' }}
-              onBlur={e => { e.target.style.background = '#F3F4F6'; e.target.style.borderColor = 'transparent' }}
-            />
+
+            <div style={{ background:'#F9FAFB', borderRadius:12, border:'1.5px solid #E5E7EB', overflow:'hidden' }}>
+              {memoItems.map((item, idx) => (
+                <div key={idx} style={{ position:'relative' }}>
+                  <div style={{ display:'flex', alignItems:'center', borderBottom: idx<memoItems.length-1 ? '1px solid #F0F0F0':'none' }}>
+                    {/* 번호 */}
+                    <div style={{
+                      width:28, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center',
+                      fontSize:10, fontWeight:700, color:'#D1D5DB', borderRight:'1px solid #F0F0F0',
+                      alignSelf:'stretch',
+                    }}>
+                      {idx+1}
+                    </div>
+
+                    {/* 이모지 버튼 */}
+                    <button
+                      onClick={()=>setShowEmoji(showEmoji===idx?null:idx)}
+                      style={{
+                        width:32, height:36, flexShrink:0,
+                        background:'none', border:'none', cursor:'pointer',
+                        fontSize:16, display:'flex', alignItems:'center', justifyContent:'center',
+                        opacity: 0.6,
+                      }}
+                    >😊</button>
+
+                    {/* 입력 */}
+                    <input
+                      ref={el => { inputRefs.current[idx] = el }}
+                      type="text"
+                      value={item}
+                      onChange={e => updateItem(idx, e.target.value)}
+                      onKeyDown={e => handleKeyDown(idx, e)}
+                      placeholder={idx===0?'내용을 입력하세요':''}
+                      style={{
+                        flex:1, padding:'9px 8px', border:'none', background:'transparent',
+                        fontSize:14, color:'#1F2937', outline:'none', fontFamily:'inherit',
+                      }}
+                    />
+
+                    {/* 항목 삭제 (2개 이상일 때) */}
+                    {memoItems.length > 1 && (
+                      <button
+                        onClick={()=>setMemoItems(memoItems.filter((_,i)=>i!==idx))}
+                        style={{ width:28, flexShrink:0, background:'none', border:'none', cursor:'pointer', fontSize:14, color:'#D1D5DB', padding:0 }}
+                      >×</button>
+                    )}
+                  </div>
+
+                  {/* 이모지 피커 */}
+                  {showEmoji===idx&&(
+                    <div style={{
+                      position:'absolute', left:0, right:0, zIndex:10,
+                      background:'#fff', border:'1.5px solid #E5E7EB',
+                      borderRadius:12, padding:10,
+                      boxShadow:'0 8px 24px rgba(0,0,0,0.12)',
+                    }} onClick={e=>e.stopPropagation()}>
+                      <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', marginBottom:8 }}>이모지 선택</div>
+                      <div style={{ display:'grid', gridTemplateColumns:'repeat(8,1fr)', gap:4 }}>
+                        {EMOJI_LIST.map(emoji=>(
+                          <button key={emoji} onClick={()=>insertEmoji(idx,emoji)}
+                            style={{ fontSize:20, background:'none', border:'none', cursor:'pointer', padding:'4px 0', borderRadius:6, lineHeight:1 }}
+                          >{emoji}</button>
+                        ))}
+                      </div>
+                      <button onClick={()=>setShowEmoji(null)}
+                        style={{ marginTop:8, width:'100%', padding:'6px', borderRadius:8, background:'#F3F4F6', border:'none', fontSize:12, color:'#6B7280', cursor:'pointer', fontWeight:600 }}>
+                        닫기
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* 항목 추가 버튼 */}
+              <button
+                onClick={()=>{
+                  setMemoItems([...memoItems,''])
+                  setTimeout(()=>inputRefs.current[memoItems.length]?.focus(),30)
+                }}
+                style={{
+                  width:'100%', padding:'8px', background:'none', border:'none',
+                  borderTop:'1px dashed #E5E7EB', cursor:'pointer',
+                  fontSize:12, color:'#9CA3AF', fontWeight:600,
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:4,
+                }}
+              >
+                <span style={{ fontSize:16 }}>+</span> 항목 추가
+              </button>
+            </div>
           </div>
 
-          {/* ── 버튼 ── */}
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={onClose} style={{
-              flex: '0 0 27%', padding: '13px 0', borderRadius: 14,
-              background: '#F3F4F6', color: '#6B7280',
-              fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer',
-            }}>취소</button>
+          {/* 저장/취소 */}
+          <div style={{ display:'flex', gap:10 }}>
+            <button onClick={onClose} style={{ flex:'0 0 27%', padding:'13px 0', borderRadius:14, background:'#F3F4F6', color:'#6B7280', fontSize:14, fontWeight:700, border:'none', cursor:'pointer' }}>취소</button>
             <button onClick={save} disabled={saving} style={{
-              flex: 1, padding: '13px 0', borderRadius: 14,
-              background: saving ? '#9CA3AF' : '#6366f1',
-              color: '#fff', fontSize: 15, fontWeight: 800,
-              border: 'none', cursor: 'pointer',
-              boxShadow: saving ? 'none' : '0 4px 14px rgba(99,102,241,0.35)',
+              flex:1, padding:'13px 0', borderRadius:14,
+              background:saving?'#9CA3AF':'#1a1a1a', color:'#fff',
+              fontSize:15, fontWeight:800, border:'none', cursor:'pointer',
+              boxShadow:saving?'none':'0 4px 14px rgba(0,0,0,0.2)',
             }}>
-              {saving ? '저장 중…' : '저장하기'}
+              {saving?'저장 중…':'저장하기'}
             </button>
           </div>
         </div>
@@ -204,46 +279,32 @@ export default function DayModal({ date, schedule, members, onClose, onSaved }: 
 }
 
 function PickerRow({ label, selected, options, members, onSelect }: {
-  label: string; selected: string
-  options: Member[]; members: Member[]
-  onSelect: (id: string) => void
+  label:string; selected:string; options:Member[]; members:Member[]; onSelect:(id:string)=>void
 }) {
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{
-        fontSize: 11, fontWeight: 800, color: '#9CA3AF',
-        textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8,
-        display: 'flex', alignItems: 'center', gap: 6,
-      }}>
+    <div style={{ marginBottom:14 }}>
+      <div style={{ fontSize:11, fontWeight:800, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8, display:'flex', alignItems:'center', gap:6 }}>
         {label}
-        {selected && <span style={{ color: '#6366f1', textTransform: 'none', letterSpacing: 0, fontWeight: 700, fontSize: 12 }}>✓</span>}
+        {selected&&<span style={{ color:'#6366f1', textTransform:'none', letterSpacing:0, fontWeight:700, fontSize:12 }}>✓</span>}
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        {options.map(x => {
-          const idx = members.findIndex(m => m.id === x.id)
+      <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+        {options.map(x=>{
+          const idx = members.findIndex(m=>m.id===x.id)
           const c = getMemberColor(idx)
-          const sel = selected === x.id
+          const sel = selected===x.id
           return (
-            <button key={x.id} onClick={() => onSelect(sel ? '' : x.id)} style={{
-              padding: '9px 18px', borderRadius: 99,
-              background: sel ? c.bg : '#F3F4F6',
-              color: sel ? '#fff' : '#374151',
-              fontSize: 14, fontWeight: 700,
-              border: `2px solid ${sel ? c.bg : 'transparent'}`,
-              boxShadow: sel ? `0 3px 10px ${c.bg}55` : 'none',
-              cursor: 'pointer',
-            }}>
-              {x.name}
-            </button>
+            <button key={x.id} onClick={()=>onSelect(sel?'':x.id)} style={{
+              padding:'9px 18px', borderRadius:99,
+              background:sel?c.bg:'#F3F4F6', color:sel?'#fff':'#374151',
+              fontSize:14, fontWeight:700,
+              border:`2px solid ${sel?c.bg:'transparent'}`,
+              boxShadow:sel?`0 3px 10px ${c.bg}55`:'none',
+              cursor:'pointer',
+            }}>{x.name}</button>
           )
         })}
-        {selected && (
-          <button onClick={() => onSelect('')} style={{
-            padding: '9px 14px', borderRadius: 99,
-            background: '#F3F4F6', color: '#9CA3AF',
-            fontSize: 13, fontWeight: 600,
-            border: '2px solid transparent', cursor: 'pointer',
-          }}>해제</button>
+        {selected&&(
+          <button onClick={()=>onSelect('')} style={{ padding:'9px 14px', borderRadius:99, background:'#F3F4F6', color:'#9CA3AF', fontSize:13, fontWeight:600, border:'2px solid transparent', cursor:'pointer' }}>해제</button>
         )}
       </div>
     </div>
