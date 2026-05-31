@@ -52,7 +52,8 @@ export default function CalendarClient() {
   const [priorities, setPriorities] = useState('')
   const [notes, setNotes]           = useState('')
   const [emojiTarget, setEmojiTarget] = useState<'priorities'|'notes'|null>(null)
-  const saveTimer = useRef<ReturnType<typeof setTimeout>|null>(null)
+  const saveTimer   = useRef<ReturnType<typeof setTimeout>|null>(null)
+  const scrollY     = useRef(0)
   const prioritiesRef = useRef<HTMLTextAreaElement|null>(null)
   const notesRef      = useRef<HTMLTextAreaElement|null>(null)
 
@@ -217,7 +218,12 @@ export default function CalendarClient() {
 
             return (
               <button key={dateStr}
-                onClick={()=>{ if(!showNameModal) setSelectedDate(dateStr) }}
+                onClick={()=>{
+                  if(!showNameModal) {
+                    scrollY.current = window.scrollY
+                    setSelectedDate(dateStr)
+                  }
+                }}
                 style={{
                   minHeight:82, background:cellBg, borderRadius:10,
                   padding:'5px 5px 4px', display:'flex', flexDirection:'column',
@@ -332,7 +338,14 @@ export default function CalendarClient() {
 
       {selectedDate&&!showNameModal&&(
         <DayModal date={selectedDate} schedule={getSch(selectedDate)} members={members}
-          onClose={()=>setSelectedDate(null)} onSaved={fetchSchedules}/>
+          onClose={()=>{
+            setSelectedDate(null)
+            setTimeout(()=>window.scrollTo({ top:scrollY.current, behavior:'instant' }), 30)
+          }}
+          onSaved={()=>{
+            fetchSchedules()
+            setTimeout(()=>window.scrollTo({ top:scrollY.current, behavior:'instant' }), 50)
+          }}/>
       )}
       {showNameModal&&(
         <NameModal currentName={userName} members={members}

@@ -19,18 +19,47 @@ interface Props {
 
 const DAYS = ['일','월','화','수','목','금','토']
 
-const parseMemo = (note: string|null): string[] => {
-  if (!note) return ['']
-  const lines = note.split('\n')
-  return lines.length > 0 ? lines : ['']
+// 메모 아이템: emoji + text 분리 저장
+interface MemoItem { emoji: string; text: string }
+
+const EMOJIS_CHECK = [
+  '✅','❌','⚠️','📌','🔔','💡','⭐','🔥','❗','❓','💯','🎯',
+  '😊','😅','😢','😡','🙏','👍','👎','💪','👏','🤝','😴','🤒',
+  '📋','📝','📞','📅','📂','🔑','💊','🏥','🚗','🏠','🍽️','⏰',
+  '☀️','🌙','🌸','🍀','❄️','🌈','💧','🎉','🎊','🌿','🌺','🍁',
+  '💪','🦵',
+]
+
+function splitItem(str: string): MemoItem {
+  for (const e of EMOJIS_CHECK) {
+    if (str.startsWith(e + ' ')) return { emoji: e, text: str.slice(e.length + 1) }
+    if (str === e) return { emoji: e, text: '' }
+  }
+  return { emoji: '', text: str }
 }
-const joinMemo = (items: string[]): string => items.filter(s => s.trim()).join('\n')
+
+function joinItem(item: MemoItem): string {
+  if (!item.emoji && !item.text.trim()) return ''
+  if (!item.emoji) return item.text
+  return item.emoji + ' ' + item.text
+}
+
+function parseMemo(note: string|null): MemoItem[] {
+  if (!note) return [{ emoji: '', text: '' }]
+  const lines = note.split('\n')
+  const items = lines.map(splitItem)
+  return items.length > 0 ? items : [{ emoji: '', text: '' }]
+}
+
+function joinMemo(items: MemoItem[]): string {
+  return items.map(joinItem).filter(Boolean).join('\n')
+}
 
 export default function DayModal({ date, schedule, members, onClose, onSaved }: Props) {
   const [m1, setM1] = useState(schedule?.member1_id || '')
   const [m2, setM2] = useState(schedule?.member2_id || '')
   const [isOff, setIsOff] = useState(schedule?.is_off || false)
-  const [memoItems, setMemoItems] = useState<string[]>(parseMemo(schedule?.note || null))
+  const [items, setItems] = useState<MemoItem[]>(parseMemo(schedule?.note || null))
   const [saving, setSaving] = useState(false)
   const [emojiTargetIdx, setEmojiTargetIdx] = useState<number|null>(null)
   const inputRefs = useRef<(HTMLInputElement|null)[]>([])
@@ -43,29 +72,31 @@ export default function DayModal({ date, schedule, members, onClose, onSaved }: 
   const isRed = isRedDay(date, dow)
   const dateColor = isRed ? '#C0392B' : isSat ? '#2563EB' : '#111827'
 
-  const updateItem = (idx: number, val: string) => {
-    const next = [...memoItems]; next[idx] = val; setMemoItems(next)
+  const updateEmoji = (idx: number, emoji: string) => {
+    const next = [...items]
+    next[idx] = { ...next[idx], emoji }
+    setItems(next)
+  }
+
+  const updateText = (idx: number, text: string) => {
+    const next = [...items]
+    next[idx] = { ...next[idx], text }
+    setItems(next)
   }
 
   const handleKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault()
-      const next = [...memoItems]; next.splice(idx+1, 0, ''); setMemoItems(next)
+      const next = [...items]
+      next.splice(idx+1, 0, { emoji: '', text: '' })
+      setItems(next)
       setTimeout(() => inputRefs.current[idx+1]?.focus(), 30)
     }
-    if (e.key === 'Backspace' && memoItems[idx] === '' && memoItems.length > 1) {
+    if (e.key === 'Backspace' && items[idx].text === '' && items.length > 1) {
       e.preventDefault()
-      setMemoItems(memoItems.filter((_,i) => i !== idx))
+      setItems(items.filter((_,i) => i !== idx))
       setTimeout(() => inputRefs.current[Math.max(0, idx-1)]?.focus(), 30)
     }
-  }
-
-  const handleEmojiSelect = (emoji: string) => {
-    if (emojiTargetIdx === null) return
-    const next = [...memoItems]
-    next[emojiTargetIdx] = emoji + ' ' + next[emojiTargetIdx]
-    setMemoItems(next)
-    setTimeout(() => inputRefs.current[emojiTargetIdx]?.focus(), 30)
   }
 
   const save = async () => {
@@ -75,7 +106,7 @@ export default function DayModal({ date, schedule, members, onClose, onSaved }: 
       member1_id: isOff ? null : (m1||null),
       member2_id: isOff ? null : (m2||null),
       is_off: isOff,
-      note: joinMemo(memoItems) || null,
+      note: joinMemo(items) || null,
     }
     if (schedule) await supabase.from('schedules').update(payload).eq('id', schedule.id)
     else await supabase.from('schedules').insert(payload)
@@ -112,12 +143,12 @@ export default function DayModal({ date, schedule, members, onClose, onSaved }: 
             {/* 날짜 헤더 */}
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                <span style={{ fontSize:26, fontWeight:900, color:dateColor, lineHeight:1 }}>{d}일</span>
+                <span style={{ fontSize:26, fontWeight:900, color:dateColor }}>{d}일</span>
                 <span style={{ fontSize:14, fontWeight:600, color:'#6B7280' }}>{mo}월 {DAYS[dow]}요일</span>
                 {holiday && <span style={{ fontSize:11, fontWeight:700, color:'#DC2626', background:'#FEE2E2', padding:'2px 8px', borderRadius:99 }}>{holiday}</span>}
               </div>
               {schedule && (
-                <button onClick={del} style={{ padding:'6px 14px', borderRadius:99, background:'#FEE2E2', color:'#EF4444', fontSize:13, fontWeight:700, border:'none', cursor:'pointer', flexShrink:0 }}>삭제</button>
+                <button onClick={del} style={{ padding:'6px 14px', borderRadius:99, background:'#FEE2E2', color:'#EF4444', fontSize:13, fontWeight:700, border:'none', cursor:'pointer' }}>삭제</button>
               )}
             </div>
 
@@ -133,7 +164,7 @@ export default function DayModal({ date, schedule, members, onClose, onSaved }: 
                 휴무일
                 {isOff && <span style={{ fontSize:12, color:'#F59E0B', fontWeight:600 }}>설정됨</span>}
               </span>
-              <div style={{ width:40, height:22, borderRadius:99, position:'relative', background:isOff?'#F59E0B':'#D1D5DB', flexShrink:0, transition:'background 0.2s' }}>
+              <div style={{ width:40, height:22, borderRadius:99, position:'relative', background:isOff?'#F59E0B':'#D1D5DB', flexShrink:0 }}>
                 <div style={{ position:'absolute', top:2, left:isOff?20:2, width:18, height:18, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,0.2)', transition:'left 0.2s' }}/>
               </div>
             </button>
@@ -150,44 +181,57 @@ export default function DayModal({ date, schedule, members, onClose, onSaved }: 
             <div style={{ marginBottom:20 }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
                 <div style={{ fontSize:11, fontWeight:800, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em' }}>메모</div>
-                <div style={{ fontSize:10, color:'#C4B9AC' }}>Enter = 새 항목 추가</div>
+                <div style={{ fontSize:10, color:'#C4B9AC' }}>Enter = 새 항목</div>
               </div>
 
               <div style={{ background:'#F9FAFB', borderRadius:12, border:'1.5px solid #E5E7EB', overflow:'hidden' }}>
-                {memoItems.map((item, idx) => (
+                {items.map((item, idx) => (
                   <div key={idx} style={{
                     display:'flex', alignItems:'center',
-                    borderBottom: idx < memoItems.length-1 ? '1px solid #F0F0F0' : 'none',
+                    borderBottom: idx < items.length-1 ? '1px solid #EFEFEF' : 'none',
+                    minHeight:44,
                   }}>
                     {/* 순번 */}
-                    <div style={{ width:26, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#D1D5DB', alignSelf:'stretch', borderRight:'1px solid #F0F0F0' }}>
+                    <div style={{ width:24, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#D1D5DB', alignSelf:'stretch', borderRight:'1px solid #EFEFEF' }}>
                       {idx+1}
                     </div>
 
-                    {/* 이모지 버튼 — 탭하면 이모지 피커 열림 */}
+                    {/* 이모지 슬롯 — 탭하면 교체 */}
                     <button
                       onClick={() => setEmojiTargetIdx(idx)}
-                      style={{ width:34, height:40, flexShrink:0, background:'none', border:'none', cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}
+                      title="이모지 변경"
+                      style={{
+                        width:38, height:44, flexShrink:0,
+                        background: item.emoji ? 'rgba(99,102,241,0.06)' : 'none',
+                        border:'none', cursor:'pointer',
+                        fontSize:20, display:'flex', alignItems:'center', justifyContent:'center',
+                        borderRight:'1px solid #EFEFEF',
+                        position:'relative',
+                      }}
                     >
-                      😊
+                      {item.emoji || <span style={{ fontSize:16, opacity:0.3 }}>😊</span>}
+                      {/* 교체 힌트 점 */}
+                      {item.emoji && (
+                        <span style={{ position:'absolute', top:4, right:4, width:5, height:5, borderRadius:'50%', background:'#6366f1', opacity:0.6 }}/>
+                      )}
                     </button>
 
-                    {/* 입력 */}
+                    {/* 텍스트 입력 */}
                     <input
                       ref={el => { inputRefs.current[idx] = el }}
                       type="text"
-                      value={item}
-                      onChange={e => updateItem(idx, e.target.value)}
+                      value={item.text}
+                      onChange={e => updateText(idx, e.target.value)}
                       onKeyDown={e => handleKeyDown(idx, e)}
                       placeholder={idx === 0 ? '내용을 입력하세요' : ''}
                       style={{ flex:1, padding:'10px 6px', border:'none', background:'transparent', fontSize:14, color:'#1F2937', outline:'none', fontFamily:'inherit' }}
                     />
 
-                    {/* 삭제 */}
-                    {memoItems.length > 1 && (
+                    {/* 항목 삭제 */}
+                    {items.length > 1 && (
                       <button
-                        onClick={() => setMemoItems(memoItems.filter((_,i) => i !== idx))}
-                        style={{ width:30, flexShrink:0, background:'none', border:'none', cursor:'pointer', fontSize:16, color:'#D1D5DB', padding:0 }}
+                        onClick={() => setItems(items.filter((_,i) => i !== idx))}
+                        style={{ width:30, flexShrink:0, background:'none', border:'none', cursor:'pointer', fontSize:18, color:'#D1D5DB', padding:0 }}
                       >×</button>
                     )}
                   </div>
@@ -196,18 +240,18 @@ export default function DayModal({ date, schedule, members, onClose, onSaved }: 
                 {/* + 항목 추가 */}
                 <button
                   onClick={() => {
-                    const next = [...memoItems, '']
-                    setMemoItems(next)
+                    const next = [...items, { emoji:'', text:'' }]
+                    setItems(next)
                     setTimeout(() => inputRefs.current[next.length-1]?.focus(), 30)
                   }}
                   style={{
-                    width:'100%', padding:'8px', background:'none', border:'none',
+                    width:'100%', padding:'9px', background:'none', border:'none',
                     borderTop:'1px dashed #E5E7EB', cursor:'pointer',
                     fontSize:12, color:'#9CA3AF', fontWeight:600,
                     display:'flex', alignItems:'center', justifyContent:'center', gap:4,
                   }}
                 >
-                  <span style={{ fontSize:16 }}>+</span> 항목 추가
+                  + 항목 추가
                 </button>
               </div>
             </div>
@@ -228,10 +272,13 @@ export default function DayModal({ date, schedule, members, onClose, onSaved }: 
         </div>
       </div>
 
-      {/* 이모지 피커 — 최상위 오버레이 */}
+      {/* 이모지 피커 — 항목별 교체 */}
       {emojiTargetIdx !== null && (
         <EmojiPicker
-          onSelect={handleEmojiSelect}
+          onSelect={emoji => {
+            updateEmoji(emojiTargetIdx, emoji)
+            setTimeout(() => inputRefs.current[emojiTargetIdx]?.focus(), 30)
+          }}
           onClose={() => setEmojiTargetIdx(null)}
         />
       )}
