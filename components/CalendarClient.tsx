@@ -15,8 +15,9 @@ interface Schedule {
   is_off: boolean; note: string | null
 }
 
-const DAYS = ['일', '월', '화', '수', '목', '금', '토']
-const MONTHS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월']
+const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+const DAYS_KO = ['일', '월', '화', '수', '목', '금', '토']
+const MONTHS_KO = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월']
 const pad = (n: number) => String(n).padStart(2, '0')
 
 export default function CalendarClient() {
@@ -45,9 +46,9 @@ export default function CalendarClient() {
 
   const fetchSchedules = useCallback(async () => {
     setLoading(true)
-    const start = `${yr}-${pad(mo + 1)}-01`
-    const end = `${yr}-${pad(mo + 1)}-${pad(new Date(yr, mo + 1, 0).getDate())}`
-    const { data } = await supabase.from('schedules').select('*').gte('date', start).lte('date', end)
+    const start = `${yr}-${pad(mo+1)}-01`
+    const end = `${yr}-${pad(mo+1)}-${pad(new Date(yr,mo+1,0).getDate())}`
+    const { data } = await supabase.from('schedules').select('*').gte('date',start).lte('date',end)
     setSchedules(data || [])
     setLoading(false)
   }, [yr, mo])
@@ -57,14 +58,14 @@ export default function CalendarClient() {
 
   useEffect(() => {
     const ch = supabase.channel('rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'schedules' }, fetchSchedules)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'team_members' }, fetchMembers)
+      .on('postgres_changes',{event:'*',schema:'public',table:'schedules'},fetchSchedules)
+      .on('postgres_changes',{event:'*',schema:'public',table:'team_members'},fetchMembers)
       .subscribe()
     return () => { supabase.removeChannel(ch) }
   }, [fetchSchedules, fetchMembers])
 
-  const prevMo = () => { if (mo === 0) { setYr(y => y - 1); setMo(11) } else setMo(m => m - 1) }
-  const nextMo = () => { if (mo === 11) { setYr(y => y + 1); setMo(0) } else setMo(m => m + 1) }
+  const prevMo = () => { if(mo===0){setYr(y=>y-1);setMo(11)}else setMo(m=>m-1) }
+  const nextMo = () => { if(mo===11){setYr(y=>y+1);setMo(0)}else setMo(m=>m+1) }
 
   const getSch = (d: string) => schedules.find(s => s.date === d) || null
   const getMember = (id: string | null) => id ? members.find(m => m.id === id) || null : null
@@ -75,49 +76,81 @@ export default function CalendarClient() {
   }
 
   const firstDay = new Date(yr, mo, 1).getDay()
-  const lastDate = new Date(yr, mo + 1, 0).getDate()
+  const lastDate = new Date(yr, mo+1, 0).getDate()
   const cells: (number | null)[] = [...Array(firstDay).fill(null)]
   for (let i = 1; i <= lastDate; i++) cells.push(i)
   while (cells.length % 7 !== 0) cells.push(null)
 
-  const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`
+  const todayStr = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`
   const userColor = getMemberColor(members.findIndex(m => m.name === userName))
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* 헤더 */}
-      <header className="bg-white sticky top-0 z-20 border-b border-gray-100">
-        <div className="px-4 pt-3 pb-2 flex items-center justify-between max-w-lg mx-auto">
-          <div className="flex items-center gap-2">
-            <button onClick={prevMo}
-              className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center touch-manipulation active:bg-gray-200">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5"><path d="M15 18l-6-6 6-6"/></svg>
-            </button>
-            <h1 className="text-xl font-bold text-gray-900 min-w-[80px] text-center">
-              {yr !== today.getFullYear() ? `${yr}. ` : ''}{MONTHS[mo]}
-            </h1>
-            <button onClick={nextMo}
-              className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center touch-manipulation active:bg-gray-200">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5"><path d="M9 18l6-6-6-6"/></svg>
-            </button>
+    <div style={{ minHeight: '100dvh', background: '#FAFAFA', colorScheme: 'light', display: 'flex', flexDirection: 'column' }}>
+
+      {/* ── 헤더 ── */}
+      <div style={{
+        background: '#fff',
+        borderBottom: '2px solid #1a1a1a',
+        position: 'sticky', top: 0, zIndex: 20,
+      }}>
+        {/* 타이틀 */}
+        <div style={{
+          maxWidth: 640, margin: '0 auto',
+          padding: '14px 16px 10px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button onClick={prevMo} style={{
+              width: 30, height: 30, borderRadius: '50%',
+              border: '1.5px solid #d1d5db', background: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', fontSize: 16, color: '#555',
+            }}>‹</button>
+
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                {yr}
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#111827', lineHeight: 1, letterSpacing: '-0.02em' }}>
+                {MONTHS_KO[mo]}
+              </div>
+            </div>
+
+            <button onClick={nextMo} style={{
+              width: 30, height: 30, borderRadius: '50%',
+              border: '1.5px solid #d1d5db', background: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', fontSize: 16, color: '#555',
+            }}>›</button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {(yr !== today.getFullYear() || mo !== today.getMonth()) && (
-              <button onClick={() => { setYr(today.getFullYear()); setMo(today.getMonth()) }}
-                className="text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation"
-                style={{ background: '#EEF2FF', color: '#6366f1' }}>
-                오늘
-              </button>
+              <button
+                onClick={() => { setYr(today.getFullYear()); setMo(today.getMonth()) }}
+                style={{
+                  fontSize: 11, fontWeight: 800, color: '#6366f1',
+                  background: '#EEF2FF', border: 'none',
+                  padding: '5px 12px', borderRadius: 99, cursor: 'pointer',
+                  letterSpacing: '0.04em',
+                }}
+              >TODAY</button>
             )}
-            <Link href="/settings"
-              className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center touch-manipulation active:bg-gray-200">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <Link href="/settings" style={{
+              width: 30, height: 30, borderRadius: '50%',
+              border: '1.5px solid #d1d5db', background: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#6B7280',
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             </Link>
             {userName && (
-              <button onClick={() => setShowNameModal(true)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white touch-manipulation"
-                style={{ background: userColor?.bg || '#6366f1' }}>
+              <button onClick={() => setShowNameModal(true)} style={{
+                width: 30, height: 30, borderRadius: '50%',
+                background: userColor?.bg || '#6366f1',
+                border: 'none', color: '#fff',
+                fontSize: 12, fontWeight: 800, cursor: 'pointer',
+              }}>
                 {userName[0]}
               </button>
             )}
@@ -125,141 +158,183 @@ export default function CalendarClient() {
         </div>
 
         {/* 요일 헤더 */}
-        <div className="grid grid-cols-7 max-w-lg mx-auto border-x border-t border-gray-300">
+        <div style={{
+          maxWidth: 640, margin: '0 auto',
+          display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+          borderTop: '1px solid #1a1a1a',
+        }}>
           {DAYS.map((d, i) => (
-            <div key={d}
-              className={`py-2 text-center text-[12px] font-bold border-r border-gray-300 last:border-r-0
-                ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-500'}`}>
+            <div key={d} style={{
+              padding: '6px 0',
+              textAlign: 'center',
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: '0.06em',
+              color: i === 0 ? '#EF4444' : i === 6 ? '#3B82F6' : '#374151',
+              borderRight: i < 6 ? '1px solid #1a1a1a' : 'none',
+            }}>
               {d}
             </div>
           ))}
         </div>
-      </header>
+      </div>
 
-      {/* 달력 그리드 */}
-      <div className="flex-1 max-w-lg mx-auto w-full">
-        {/* 바깥 테두리 */}
-        <div style={{ border: '1.5px solid #CBD5E1' }}>
-          <div className="grid grid-cols-7">
-            {cells.map((day, idx) => {
-              // 빈 칸
-              if (!day) {
-                const isLastInRow = (idx + 1) % 7 === 0
-                return (
-                  <div key={`e${idx}`}
-                    className="min-h-[90px] bg-gray-50"
-                    style={{
-                      borderRight: isLastInRow ? 'none' : '1px solid #CBD5E1',
-                      borderBottom: '1px solid #CBD5E1',
-                    }} />
-                )
-              }
+      {/* ── 달력 그리드 ── */}
+      <div style={{ flex: 1, maxWidth: 640, margin: '0 auto', width: '100%' }}>
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+          border: '2px solid #1a1a1a',
+          borderTop: 'none',
+          background: '#1a1a1a', // gap 색
+          gap: '1px',
+        }}>
+          {cells.map((day, idx) => {
+            if (!day) return (
+              <div key={`e${idx}`} style={{ background: '#f0f0f0', minHeight: 88 }} />
+            )
 
-              const dateStr = `${yr}-${pad(mo + 1)}-${pad(day)}`
-              const sch = getSch(dateStr)
-              const isToday = dateStr === todayStr
-              const dow = (firstDay + day - 1) % 7
-              const isSat = dow === 6
-              const isLastInRow = (idx + 1) % 7 === 0
-              const holiday = getHolidayName(dateStr)
-              const isRed = isRedDay(dateStr, dow)
+            const dateStr = `${yr}-${pad(mo+1)}-${pad(day)}`
+            const sch = getSch(dateStr)
+            const isToday = dateStr === todayStr
+            const dow = (firstDay + day - 1) % 7
+            const isSat = dow === 6
+            const holiday = getHolidayName(dateStr)
+            const isRed = isRedDay(dateStr, dow)
+            const m1 = getMember(sch?.member1_id || null)
+            const m2 = getMember(sch?.member2_id || null)
+            const m1Color = getMemberColor(getMemberIdx(sch?.member1_id || null))
+            const m2Color = getMemberColor(getMemberIdx(sch?.member2_id || null))
 
-              const m1 = getMember(sch?.member1_id || null)
-              const m2 = getMember(sch?.member2_id || null)
-              const m1Color = getMemberColor(getMemberIdx(sch?.member1_id || null))
-              const m2Color = getMemberColor(getMemberIdx(sch?.member2_id || null))
+            // 셀 배경
+            let bg = '#ffffff'
+            if (sch?.is_off) bg = '#FFFBEB'
+            else if (isToday) bg = '#F5F3FF'
+            else if (isRed) bg = '#FFF5F5'
+            else if (isSat) bg = '#F0F7FF'
 
-              let cellBg = '#FFFFFF'
-              if (sch?.is_off)   cellBg = '#FFFBEB'
-              else if (isToday)  cellBg = '#F5F3FF'
-              else if (isRed)    cellBg = '#FFF5F5'
-              else if (isSat)    cellBg = '#F0F7FF'
+            // 날짜 숫자 색
+            const numColor = isToday ? '#fff' : isRed ? '#EF4444' : isSat ? '#3B82F6' : '#1F2937'
 
-              return (
-                <button
-                  key={dateStr}
-                  onClick={() => { if (!showNameModal) setSelectedDate(dateStr) }}
-                  className="min-h-[90px] p-1 text-left flex flex-col gap-0.5 touch-manipulation active:brightness-95 transition-all w-full"
-                  style={{
-                    background: cellBg,
-                    borderRight: isLastInRow ? 'none' : '1px solid #CBD5E1',
-                    borderBottom: '1px solid #CBD5E1',
-                    outline: isToday ? '2px solid #6366f1' : undefined,
-                    outlineOffset: isToday ? '-2px' : undefined,
-                  }}
-                >
-                  {/* 날짜 숫자 */}
-                  <div className="flex justify-center mb-0.5">
-                    <span
-                      className={`w-6 h-6 flex items-center justify-center rounded-full text-[12px] font-bold
-                        ${isToday ? 'text-white' : isRed ? 'text-red-500' : isSat ? 'text-blue-500' : 'text-gray-800'}`}
-                      style={isToday ? { background: '#6366f1' } : {}}
-                    >
-                      {day}
-                    </span>
+            return (
+              <button
+                key={dateStr}
+                onClick={() => { if (!showNameModal) setSelectedDate(dateStr) }}
+                style={{
+                  minHeight: 88,
+                  background: bg,
+                  padding: '6px 5px 5px',
+                  display: 'flex', flexDirection: 'column', alignItems: 'stretch',
+                  gap: 2, border: 'none', cursor: 'pointer',
+                  textAlign: 'left', position: 'relative',
+                }}
+              >
+                {/* 날짜 숫자 */}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 2 }}>
+                  <span style={{
+                    width: 22, height: 22,
+                    borderRadius: '50%',
+                    background: isToday ? '#6366f1' : 'transparent',
+                    color: numColor,
+                    fontSize: 12, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {day}
+                  </span>
+                </div>
+
+                {/* 공휴일 */}
+                {holiday && (
+                  <div style={{
+                    fontSize: 8, fontWeight: 700, color: '#DC2626',
+                    textAlign: 'center', lineHeight: 1.2, marginBottom: 1,
+                  }}>
+                    {holiday}
                   </div>
+                )}
 
-                  {/* 공휴일 이름 */}
-                  {holiday && (
-                    <div className="text-[8px] font-bold text-red-400 text-center w-full leading-tight truncate px-0.5">
-                      {holiday}
-                    </div>
-                  )}
+                {/* 휴무 */}
+                {sch?.is_off && (
+                  <div style={{
+                    fontSize: 10, fontWeight: 700, color: '#D97706',
+                    textAlign: 'center',
+                  }}>휴무</div>
+                )}
 
-                  {/* 당번 / 휴무 */}
-                  {sch?.is_off ? (
-                    <div className="text-[10px] font-bold text-amber-500 text-center w-full mt-0.5">😴 휴무</div>
-                  ) : (
-                    <div className="space-y-0.5 w-full mt-0.5">
-                      {m1 && (
-                        <div className="rounded-md px-1 py-0.5 text-[10px] font-bold w-full text-center truncate leading-tight"
-                          style={{ background: m1Color.bg, color: '#fff' }}>
-                          {m1.name}
-                        </div>
-                      )}
-                      {m2 && (
-                        <div className="rounded-md px-1 py-0.5 text-[10px] font-bold w-full text-center truncate leading-tight"
-                          style={{ background: m2Color.bg, color: '#fff' }}>
-                          {m2.name}
-                        </div>
-                      )}
-                      {!m1 && !m2 && (
-                        <div className="text-[11px] text-gray-300 text-center w-full mt-1">+</div>
-                      )}
-                    </div>
-                  )}
+                {/* 당번 이름 */}
+                {!sch?.is_off && (
+                  <>
+                    {m1 && (
+                      <div style={{
+                        fontSize: 10, fontWeight: 700,
+                        color: '#fff',
+                        background: m1Color.bg,
+                        borderRadius: 4,
+                        padding: '2px 4px',
+                        textAlign: 'center',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {m1.name}
+                      </div>
+                    )}
+                    {m2 && (
+                      <div style={{
+                        fontSize: 10, fontWeight: 700,
+                        color: '#fff',
+                        background: m2Color.bg,
+                        borderRadius: 4,
+                        padding: '2px 4px',
+                        textAlign: 'center',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {m2.name}
+                      </div>
+                    )}
+                    {!m1 && !m2 && (
+                      <div style={{ fontSize: 12, color: '#D1D5DB', textAlign: 'center' }}>·</div>
+                    )}
+                  </>
+                )}
 
-                  {/* 메모 */}
-                  {sch?.note && (
-                    <div className="text-[9px] text-gray-400 w-full truncate text-center leading-tight mt-0.5">
-                      {sch.note}
-                    </div>
-                  )}
-                </button>
-              )
-            })}
-          </div>
+                {/* 메모 */}
+                {sch?.note && (
+                  <div style={{
+                    fontSize: 8, color: '#9CA3AF',
+                    textAlign: 'center', marginTop: 'auto',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {sch.note}
+                  </div>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* 범례 */}
+        <div style={{
+          display: 'flex', gap: 12, justifyContent: 'center',
+          padding: '10px 16px',
+          fontSize: 10, fontWeight: 600, color: '#9CA3AF',
+          letterSpacing: '0.04em',
+        }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 10, height: 10, background: '#FFF5F5', border: '1px solid #FCA5A5', borderRadius: 2, display: 'inline-block' }} />
+            공휴일·일요일
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 10, height: 10, background: '#F0F7FF', border: '1px solid #93C5FD', borderRadius: 2, display: 'inline-block' }} />
+            토요일
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 10, height: 10, background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 2, display: 'inline-block' }} />
+            휴무
+          </span>
         </div>
       </div>
-
-      {/* 범례 */}
-      <div className="max-w-lg mx-auto w-full px-4 py-3 flex gap-4 justify-center border-t border-gray-50">
-        <span className="flex items-center gap-1 text-[11px] text-gray-400">
-          <span className="w-3 h-3 rounded-sm bg-red-50 border border-red-200 inline-block"/>공휴일·일요일
-        </span>
-        <span className="flex items-center gap-1 text-[11px] text-gray-400">
-          <span className="w-3 h-3 rounded-sm bg-blue-50 border border-blue-200 inline-block"/>토요일
-        </span>
-        <span className="flex items-center gap-1 text-[11px] text-gray-400">
-          <span className="w-3 h-3 rounded-sm bg-amber-50 border border-amber-200 inline-block"/>휴무
-        </span>
-      </div>
-
-      {loading && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-800/80 text-white text-xs px-4 py-2 rounded-full backdrop-blur-sm">
-          불러오는 중…
-        </div>
-      )}
 
       {selectedDate && !showNameModal && (
         <DayModal
