@@ -125,10 +125,11 @@ export default function CalendarClient() {
         </div>
 
         {/* 요일 헤더 */}
-        <div className="grid grid-cols-7 max-w-lg mx-auto">
+        <div className="grid grid-cols-7 max-w-lg mx-auto border-x border-t border-gray-300">
           {DAYS.map((d, i) => (
-            <div key={d} className={`py-1.5 text-center text-[11px] font-bold
-              ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-400'}`}>
+            <div key={d}
+              className={`py-2 text-center text-[12px] font-bold border-r border-gray-300 last:border-r-0
+                ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-500'}`}>
               {d}
             </div>
           ))}
@@ -137,87 +138,107 @@ export default function CalendarClient() {
 
       {/* 달력 그리드 */}
       <div className="flex-1 max-w-lg mx-auto w-full">
-        <div className="grid grid-cols-7 border-l border-t border-gray-100">
-          {cells.map((day, idx) => {
-            if (!day) return (
-              <div key={`e${idx}`} className="min-h-[90px] border-r border-b border-gray-100 bg-gray-50/30" />
-            )
+        {/* 바깥 테두리 */}
+        <div style={{ border: '1.5px solid #CBD5E1' }}>
+          <div className="grid grid-cols-7">
+            {cells.map((day, idx) => {
+              // 빈 칸
+              if (!day) {
+                const isLastInRow = (idx + 1) % 7 === 0
+                return (
+                  <div key={`e${idx}`}
+                    className="min-h-[90px] bg-gray-50"
+                    style={{
+                      borderRight: isLastInRow ? 'none' : '1px solid #CBD5E1',
+                      borderBottom: '1px solid #CBD5E1',
+                    }} />
+                )
+              }
 
-            const dateStr = `${yr}-${pad(mo + 1)}-${pad(day)}`
-            const sch = getSch(dateStr)
-            const isToday = dateStr === todayStr
-            const dow = (firstDay + day - 1) % 7
-            const isSat = dow === 6
-            const holiday = getHolidayName(dateStr)
-            const isRed = isRedDay(dateStr, dow) // 일요일 또는 공휴일
+              const dateStr = `${yr}-${pad(mo + 1)}-${pad(day)}`
+              const sch = getSch(dateStr)
+              const isToday = dateStr === todayStr
+              const dow = (firstDay + day - 1) % 7
+              const isSat = dow === 6
+              const isLastInRow = (idx + 1) % 7 === 0
+              const holiday = getHolidayName(dateStr)
+              const isRed = isRedDay(dateStr, dow)
 
-            const m1 = getMember(sch?.member1_id || null)
-            const m2 = getMember(sch?.member2_id || null)
-            const m1Color = getMemberColor(getMemberIdx(sch?.member1_id || null))
-            const m2Color = getMemberColor(getMemberIdx(sch?.member2_id || null))
+              const m1 = getMember(sch?.member1_id || null)
+              const m2 = getMember(sch?.member2_id || null)
+              const m1Color = getMemberColor(getMemberIdx(sch?.member1_id || null))
+              const m2Color = getMemberColor(getMemberIdx(sch?.member2_id || null))
 
-            // 셀 배경색
-            let cellBg = 'white'
-            if (sch?.is_off) cellBg = '#FFFBEB'
-            else if (isToday) cellBg = '#F5F3FF'
-            else if (isRed) cellBg = '#FFF8F8'
-            else if (isSat) cellBg = '#F5F8FF'
+              let cellBg = '#FFFFFF'
+              if (sch?.is_off)   cellBg = '#FFFBEB'
+              else if (isToday)  cellBg = '#F5F3FF'
+              else if (isRed)    cellBg = '#FFF5F5'
+              else if (isSat)    cellBg = '#F0F7FF'
 
-            return (
-              <button
-                key={dateStr}
-                onClick={() => { if (!showNameModal) setSelectedDate(dateStr) }}
-                className="min-h-[90px] p-1 text-left flex flex-col gap-0.5 touch-manipulation active:brightness-95 transition-all border-r border-b border-gray-100 w-full"
-                style={{ background: cellBg }}
-              >
-                {/* 날짜 숫자 */}
-                <div className="flex justify-center">
-                  <span className={`w-6 h-6 flex items-center justify-center rounded-full text-[12px] font-bold
-                    ${isToday ? 'text-white' : isRed ? 'text-red-500' : isSat ? 'text-blue-500' : 'text-gray-800'}`}
-                    style={isToday ? { background: '#6366f1' } : {}}>
-                    {day}
-                  </span>
-                </div>
-
-                {/* 공휴일 이름 */}
-                {holiday && (
-                  <div className="text-[8px] font-bold text-red-400 text-center w-full leading-tight truncate">
-                    {holiday}
+              return (
+                <button
+                  key={dateStr}
+                  onClick={() => { if (!showNameModal) setSelectedDate(dateStr) }}
+                  className="min-h-[90px] p-1 text-left flex flex-col gap-0.5 touch-manipulation active:brightness-95 transition-all w-full"
+                  style={{
+                    background: cellBg,
+                    borderRight: isLastInRow ? 'none' : '1px solid #CBD5E1',
+                    borderBottom: '1px solid #CBD5E1',
+                    outline: isToday ? '2px solid #6366f1' : undefined,
+                    outlineOffset: isToday ? '-2px' : undefined,
+                  }}
+                >
+                  {/* 날짜 숫자 */}
+                  <div className="flex justify-center mb-0.5">
+                    <span
+                      className={`w-6 h-6 flex items-center justify-center rounded-full text-[12px] font-bold
+                        ${isToday ? 'text-white' : isRed ? 'text-red-500' : isSat ? 'text-blue-500' : 'text-gray-800'}`}
+                      style={isToday ? { background: '#6366f1' } : {}}
+                    >
+                      {day}
+                    </span>
                   </div>
-                )}
 
-                {/* 당번 / 휴무 */}
-                {sch?.is_off ? (
-                  <div className="text-[10px] font-bold text-amber-500 text-center w-full mt-0.5">😴 휴무</div>
-                ) : (
-                  <div className="space-y-0.5 w-full mt-0.5">
-                    {m1 && (
-                      <div className="rounded-md px-1 py-0.5 text-[10px] font-bold w-full text-center truncate leading-tight"
-                        style={{ background: m1Color.bg, color: '#fff' }}>
-                        {m1.name}
-                      </div>
-                    )}
-                    {m2 && (
-                      <div className="rounded-md px-1 py-0.5 text-[10px] font-bold w-full text-center truncate leading-tight"
-                        style={{ background: m2Color.bg, color: '#fff' }}>
-                        {m2.name}
-                      </div>
-                    )}
-                    {!m1 && !m2 && (
-                      <div className="text-[10px] text-gray-200 text-center w-full">+</div>
-                    )}
-                  </div>
-                )}
+                  {/* 공휴일 이름 */}
+                  {holiday && (
+                    <div className="text-[8px] font-bold text-red-400 text-center w-full leading-tight truncate px-0.5">
+                      {holiday}
+                    </div>
+                  )}
 
-                {/* 메모 */}
-                {sch?.note && (
-                  <div className="text-[9px] text-gray-400 w-full truncate text-center leading-tight">
-                    {sch.note}
-                  </div>
-                )}
-              </button>
-            )
-          })}
+                  {/* 당번 / 휴무 */}
+                  {sch?.is_off ? (
+                    <div className="text-[10px] font-bold text-amber-500 text-center w-full mt-0.5">😴 휴무</div>
+                  ) : (
+                    <div className="space-y-0.5 w-full mt-0.5">
+                      {m1 && (
+                        <div className="rounded-md px-1 py-0.5 text-[10px] font-bold w-full text-center truncate leading-tight"
+                          style={{ background: m1Color.bg, color: '#fff' }}>
+                          {m1.name}
+                        </div>
+                      )}
+                      {m2 && (
+                        <div className="rounded-md px-1 py-0.5 text-[10px] font-bold w-full text-center truncate leading-tight"
+                          style={{ background: m2Color.bg, color: '#fff' }}>
+                          {m2.name}
+                        </div>
+                      )}
+                      {!m1 && !m2 && (
+                        <div className="text-[11px] text-gray-300 text-center w-full mt-1">+</div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 메모 */}
+                  {sch?.note && (
+                    <div className="text-[9px] text-gray-400 w-full truncate text-center leading-tight mt-0.5">
+                      {sch.note}
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+          </div>
         </div>
       </div>
 
