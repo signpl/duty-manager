@@ -14,8 +14,8 @@ export default function NameModal({currentName,members,onSave,onClose}:Props) {
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
       <div className="absolute inset-0 dim-in" style={{background:'rgba(0,0,0,0.4)'}} onClick={onClose}/>
 
-      <div className="relative bg-white rounded-t-3xl sheet-up max-h-[85vh] flex flex-col"
-        style={{boxShadow:'0 -4px 40px rgba(0,0,0,0.15)'}}>
+      <div className="sheet-up"
+        style={{position:'relative',background:'#ffffff',colorScheme:'light',borderRadius:'20px 20px 0 0',maxHeight:'85dvh',display:'flex',flexDirection:'column',boxShadow:'0 -8px 40px rgba(0,0,0,0.2)'}}>
 
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
           <div className="w-10 h-1 rounded-full bg-gray-200"/>
