@@ -3,10 +3,9 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { getMemberColor } from '@/lib/colors'
 
 interface Member { id:string; name:string }
-const COLORS = ['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981','#3b82f6','#ef4444','#14b8a6']
-const colorOf = (name:string) => COLORS[name.charCodeAt(0)%COLORS.length]
 
 export default function SettingsClient() {
   const [members,setMembers] = useState<Member[]>([])
@@ -20,7 +19,7 @@ export default function SettingsClient() {
   useEffect(()=>{ setUserName(localStorage.getItem('duty_user_name')); fetchMembers() },[])
 
   const fetchMembers = async () => {
-    const {data} = await supabase.from('team_members').select('*').order('name')
+    const {data} = await supabase.from('team_members').select('*').order('created_at')
     setMembers(data||[])
   }
 
@@ -48,95 +47,101 @@ export default function SettingsClient() {
   }
 
   return (
-    <div className="min-h-screen" style={{background:'#f5f5f7'}}>
-      <header style={{background:'rgba(255,255,255,0.85)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)'}}
-        className="sticky top-0 z-10 border-b border-black/5">
+    <div className="min-h-screen bg-white">
+      {/* 헤더 */}
+      <header className="sticky top-0 z-10 bg-white" style={{boxShadow:'0 1px 0 #f0f0f0'}}>
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center gap-3">
           <Link href="/calendar"
             className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center touch-manipulation active:bg-gray-200">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-gray-500"><path d="M15 18l-6-6 6-6"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2.5"><path d="M15 18l-6-6 6-6"/></svg>
           </Link>
-          <h1 className="text-lg font-bold text-gray-900 flex-1">팀원 관리</h1>
-          {userName&&(
-            <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white"
-              style={{background:colorOf(userName)}}>
-              {userName[0]}
-            </div>
-          )}
+          <h1 className="text-xl font-black text-gray-900 flex-1">팀원 관리</h1>
+          <span className="text-sm text-gray-400 font-medium">{members.length}명</span>
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 py-4 space-y-4">
-        {/* 추가 */}
-        <div className="bg-white rounded-3xl p-4 shadow-sm border border-black/5">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">새 팀원 추가</p>
+      <main className="max-w-lg mx-auto px-4 py-5">
+        {/* 팀원 추가 */}
+        <div className="mb-6">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">새 팀원 추가</p>
           <div className="flex gap-2">
             <input type="text" value={newName} onChange={e=>setNewName(e.target.value)}
               onKeyDown={e=>e.key==='Enter'&&add()}
               placeholder="이름 입력"
-              className="flex-1 bg-gray-50 border-2 border-transparent focus:border-indigo-200 rounded-2xl px-4 py-3 text-sm focus:outline-none transition-colors"/>
+              className="flex-1 rounded-2xl px-4 py-4 text-base font-semibold focus:outline-none"
+              style={{background:'#F5F5F5',border:'2px solid transparent'}}
+              onFocus={e=>{e.target.style.borderColor='#6366f1'}}
+              onBlur={e=>{e.target.style.borderColor='transparent'}}/>
             <button onClick={add} disabled={loading||!newName.trim()}
-              className="px-5 py-3 rounded-2xl text-white text-sm font-bold touch-manipulation active:opacity-90 disabled:opacity-40"
-              style={{background:'linear-gradient(135deg,#6366f1,#8b5cf6)'}}>
+              className="px-6 rounded-2xl text-base font-bold text-white touch-manipulation active:opacity-90 disabled:opacity-40"
+              style={{background:'#6366f1'}}>
               추가
             </button>
           </div>
         </div>
 
-        {/* 목록 */}
-        <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-black/5">
-          <div className="px-5 py-3.5 border-b border-gray-50 flex items-center justify-between">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">팀원 목록</p>
-            <span className="text-xs text-gray-300 font-medium">{members.length}명</span>
-          </div>
+        {/* 팀원 목록 */}
+        <div>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">팀원 목록</p>
 
           {members.length===0?(
             <div className="text-center py-16 text-gray-300">
               <div className="text-5xl mb-3">👥</div>
-              <p className="text-sm">팀원을 추가해주세요</p>
+              <p>팀원을 추가해주세요</p>
             </div>
           ):(
-            <ul>
-              {members.map((m,i)=>(
-                <li key={m.id} className={i?'border-t border-gray-50':''}>
-                  {editingId===m.id?(
-                    <div className="flex items-center gap-2 px-4 py-3">
-                      <input type="text" value={editingName} onChange={e=>setEditingName(e.target.value)}
-                        onKeyDown={e=>{ if(e.key==='Enter') update(m.id); if(e.key==='Escape') setEditingId(null) }}
-                        autoFocus
-                        className="flex-1 bg-gray-50 border-2 border-indigo-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none"/>
-                      <button onClick={()=>update(m.id)}
-                        className="px-3 py-2.5 text-xs font-bold text-white rounded-xl touch-manipulation"
-                        style={{background:'#6366f1'}}>저장</button>
-                      <button onClick={()=>setEditingId(null)}
-                        className="px-3 py-2.5 text-xs text-gray-500 bg-gray-100 rounded-xl touch-manipulation">취소</button>
-                    </div>
-                  ):(
-                    <div className="flex items-center gap-3 px-4 py-3.5">
-                      <div className="w-11 h-11 rounded-full flex items-center justify-center text-white text-base font-bold flex-shrink-0 shadow-sm"
-                        style={{background:colorOf(m.name)}}>
-                        {m.name[0]}
+            <div className="space-y-2">
+              {members.map((m,i)=>{
+                const c = getMemberColor(i)
+                return (
+                  <div key={m.id} className="rounded-2xl overflow-hidden"
+                    style={{background:'#FAFAFA',border:'1px solid #F0F0F0'}}>
+                    {editingId===m.id?(
+                      <div className="flex items-center gap-2 p-3">
+                        <input type="text" value={editingName} onChange={e=>setEditingName(e.target.value)}
+                          onKeyDown={e=>{ if(e.key==='Enter') update(m.id); if(e.key==='Escape') setEditingId(null) }}
+                          autoFocus
+                          className="flex-1 rounded-xl px-4 py-3 text-base font-semibold focus:outline-none"
+                          style={{background:'#fff',border:`2px solid ${c.bg}`}}/>
+                        <button onClick={()=>update(m.id)}
+                          className="px-4 py-3 rounded-xl text-sm font-bold text-white touch-manipulation"
+                          style={{background:c.bg}}>저장</button>
+                        <button onClick={()=>setEditingId(null)}
+                          className="px-4 py-3 rounded-xl text-sm font-semibold text-gray-500 touch-manipulation"
+                          style={{background:'#EFEFEF'}}>취소</button>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-semibold text-gray-800">{m.name}</span>
-                        {userName===m.name&&(
-                          <span className="ml-2 text-[10px] text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full font-semibold">나</span>
-                        )}
+                    ):(
+                      <div className="flex items-center gap-3 p-3">
+                        {/* 컬러 아바타 */}
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-black text-white flex-shrink-0"
+                          style={{background:c.bg}}>
+                          {m.name[0]}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base font-bold text-gray-800">{m.name}</span>
+                            {userName===m.name&&(
+                              <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white"
+                                style={{background:c.bg}}>나</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <button onClick={()=>{setEditingId(m.id);setEditingName(m.name)}}
+                            className="px-4 py-2.5 rounded-xl text-sm font-bold touch-manipulation"
+                            style={{background:c.light,color:c.bg}}>수정</button>
+                          <button onClick={()=>del(m.id)}
+                            className="px-4 py-2.5 rounded-xl text-sm font-bold text-red-400 touch-manipulation"
+                            style={{background:'#FFF0F0'}}>삭제</button>
+                        </div>
                       </div>
-                      <div className="flex gap-1.5">
-                        <button onClick={()=>{setEditingId(m.id);setEditingName(m.name)}}
-                          className="px-3 py-2 text-xs text-gray-500 bg-gray-100 rounded-xl font-medium touch-manipulation active:bg-gray-200">수정</button>
-                        <button onClick={()=>del(m.id)}
-                          className="px-3 py-2 text-xs text-red-400 bg-red-50 rounded-xl touch-manipulation active:bg-red-100">삭제</button>
-                      </div>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           )}
         </div>
-        <p className="text-xs text-center text-gray-300 pb-6">변경사항은 팀원 모두에게 실시간 반영됩니다</p>
       </main>
     </div>
   )

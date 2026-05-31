@@ -4,24 +4,26 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
+html { height: 100%; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Noto Sans KR', sans-serif;
-  background: #f5f5f7;
+  background: #fff;
   -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
 }
 
-.slide-up {
-  animation: slideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+.sheet-up {
+  animation: sheetUp 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
-@keyframes slideUp {
+@keyframes sheetUp {
   from { transform: translateY(100%); }
   to   { transform: translateY(0); }
 }
 
-.fade-in {
-  animation: fadeIn 0.2s ease forwards;
+.dim-in {
+  animation: dimIn 0.25s ease forwards;
 }
-@keyframes fadeIn {
+@keyframes dimIn {
   from { opacity: 0; }
   to   { opacity: 1; }
 }

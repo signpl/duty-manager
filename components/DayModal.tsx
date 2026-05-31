@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getMemberColor } from '@/lib/colors'
 
 interface Member { id:string; name:string }
 interface Schedule { id:string; date:string; member1_id:string|null; member2_id:string|null; is_off:boolean; note:string|null }
@@ -19,11 +20,17 @@ export default function DayModal({date,schedule,members,onClose,onSaved}:Props) 
 
   const [y,mo,d] = date.split('-').map(Number)
   const dow = new Date(y,mo-1,d).getDay()
-  const displayDate = `${mo}월 ${d}일 (${DAYS[dow]})`
+  const isSun=dow===0; const isSat=dow===6
 
   const save = async () => {
     setSaving(true)
-    const payload = { date, member1_id:isOff?null:(m1||null), member2_id:isOff?null:(m2||null), is_off:isOff, note:note.trim()||null }
+    const payload = {
+      date,
+      member1_id: isOff?null:(m1||null),
+      member2_id: isOff?null:(m2||null),
+      is_off: isOff,
+      note: note.trim()||null
+    }
     if(schedule) await supabase.from('schedules').update(payload).eq('id',schedule.id)
     else await supabase.from('schedules').insert(payload)
     setSaving(false); onSaved(); onClose()
@@ -35,122 +42,142 @@ export default function DayModal({date,schedule,members,onClose,onSaved}:Props) 
     onSaved(); onClose()
   }
 
-  const avail1 = members.filter(x=>!m2||x.id!==m2)
-  const avail2 = members.filter(x=>!m1||x.id!==m1)
+  // 선택 시 상대방 제외
+  const opts1 = members.filter(x=>!m2||x.id!==m2)
+  const opts2 = members.filter(x=>!m1||x.id!==m1)
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={onClose}>
-      {/* 딤 */}
-      <div className="absolute inset-0 bg-black/30 fade-in backdrop-blur-[2px]"/>
+      <div className="absolute inset-0 dim-in" style={{background:'rgba(0,0,0,0.35)'}}/>
 
-      {/* 바텀시트 */}
-      <div className="relative bg-white rounded-t-3xl shadow-2xl slide-up max-h-[90vh] flex flex-col"
+      <div className="relative bg-white rounded-t-3xl sheet-up max-h-[92vh] flex flex-col"
+        style={{boxShadow:'0 -4px 40px rgba(0,0,0,0.15)'}}
         onClick={e=>e.stopPropagation()}>
 
         {/* 핸들 */}
-        <div className="flex justify-center pt-3 flex-shrink-0">
-          <div className="w-9 h-1 rounded-full bg-gray-200"/>
+        <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-200"/>
         </div>
 
-        {/* 스크롤 영역 */}
-        <div className="overflow-y-auto flex-1 px-5 pt-4 pb-8">
-          {/* 날짜 & 액션 */}
-          <div className="flex items-start justify-between mb-5">
-            <div>
-              <p className="text-xs text-gray-400 font-medium">{y}년</p>
-              <h3 className="text-2xl font-bold text-gray-900">{displayDate}</h3>
+        <div className="overflow-y-auto flex-1 px-5 pt-2 pb-10">
+
+          {/* 날짜 타이틀 */}
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-baseline gap-2">
+              <span className={`text-3xl font-black ${isSun?'text-red-500':isSat?'text-blue-500':'text-gray-900'}`}>{d}</span>
+              <span className="text-lg font-bold text-gray-400">{mo}월 {DAYS[dow]}요일</span>
             </div>
-            {schedule && (
+            {schedule&&(
               <button onClick={del}
-                className="mt-1 text-xs text-red-400 bg-red-50 px-3 py-1.5 rounded-full font-medium touch-manipulation active:bg-red-100">
-                삭제
-              </button>
+                className="text-sm text-red-400 font-semibold px-4 py-2 rounded-full touch-manipulation"
+                style={{background:'#FFF0F0'}}>삭제</button>
             )}
           </div>
 
           {/* 휴무 토글 */}
           <button onClick={()=>setIsOff(!isOff)}
-            className={`w-full flex items-center justify-between p-4 rounded-2xl mb-4 transition-all touch-manipulation border-2
-              ${isOff?'bg-amber-50 border-amber-200':'bg-gray-50 border-transparent'}`}>
+            className="w-full flex items-center justify-between p-4 rounded-2xl mb-5 touch-manipulation transition-all"
+            style={{
+              background: isOff?'#FFFBEB':'#F9F9F9',
+              border: `2px solid ${isOff?'#FCD34D':'transparent'}`
+            }}>
             <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-lg
-                ${isOff?'bg-amber-100':'bg-gray-100'}`}>
-                {isOff?'😴':'📅'}
-              </div>
+              <span className="text-2xl">{isOff?'😴':'📅'}</span>
               <div className="text-left">
-                <p className="text-sm font-semibold text-gray-800">휴무일</p>
-                <p className="text-xs text-gray-400">당번 없이 쉬는 날</p>
+                <p className="text-base font-bold text-gray-800">휴무일</p>
+                <p className="text-sm text-gray-400">당번 없이 쉬는 날로 설정</p>
               </div>
             </div>
-            {/* 토글 스위치 */}
-            <div className={`w-12 h-6 rounded-full transition-colors relative flex-shrink-0 ${isOff?'bg-amber-400':'bg-gray-200'}`}>
-              <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${isOff?'translate-x-6':''}`}/>
+            <div className="w-14 h-7 rounded-full relative transition-colors"
+              style={{background:isOff?'#FBBF24':'#E5E7EB'}}>
+              <div className="absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform"
+                style={{left:'2px',transform:isOff?'translateX(28px)':'translateX(0)'}}/>
             </div>
           </button>
 
-          {!isOff && (
-            <div className="space-y-4 mb-4">
-              {/* 당번 1 */}
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">당번 1</p>
-                <div className="flex flex-wrap gap-2">
+          {!isOff&&<>
+            {/* 당번 1 */}
+            <div className="mb-4">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">당번 1</p>
+              <div className="grid grid-cols-2 gap-2">
+                {opts1.map((x,i)=>{
+                  const c = getMemberColor(members.findIndex(m=>m.id===x.id))
+                  const sel = m1===x.id
+                  return (
+                    <button key={x.id} onClick={()=>setM1(sel?'':x.id)}
+                      className="py-4 rounded-2xl text-base font-bold touch-manipulation transition-all active:scale-95"
+                      style={{
+                        background: sel?c.bg:c.light,
+                        color: sel?'#fff':c.bg,
+                        border: `2px solid ${sel?c.bg:'transparent'}`,
+                        boxShadow: sel?`0 4px 12px ${c.bg}40`:undefined
+                      }}>
+                      {x.name}
+                    </button>
+                  )
+                })}
+                {m1&&(
                   <button onClick={()=>setM1('')}
-                    className={`px-4 py-2 rounded-full text-sm font-medium border-2 transition-all touch-manipulation
-                      ${!m1?'border-gray-400 bg-gray-100 text-gray-700':'border-gray-100 text-gray-400'}`}>
-                    없음
+                    className="py-4 rounded-2xl text-base font-bold text-gray-400 touch-manipulation"
+                    style={{background:'#F5F5F5',border:'2px solid transparent'}}>
+                    선택 해제
                   </button>
-                  {avail1.map(x=>(
-                    <button key={x.id} onClick={()=>setM1(x.id)}
-                      className={`px-4 py-2 rounded-full text-sm font-semibold border-2 transition-all touch-manipulation
-                        ${m1===x.id
-                          ?'border-indigo-500 bg-indigo-500 text-white shadow-sm shadow-indigo-200'
-                          :'border-gray-100 bg-gray-50 text-gray-700 active:border-indigo-200'}`}>
-                      {x.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 당번 2 */}
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">당번 2</p>
-                <div className="flex flex-wrap gap-2">
-                  <button onClick={()=>setM2('')}
-                    className={`px-4 py-2 rounded-full text-sm font-medium border-2 transition-all touch-manipulation
-                      ${!m2?'border-gray-400 bg-gray-100 text-gray-700':'border-gray-100 text-gray-400'}`}>
-                    없음
-                  </button>
-                  {avail2.map(x=>(
-                    <button key={x.id} onClick={()=>setM2(x.id)}
-                      className={`px-4 py-2 rounded-full text-sm font-semibold border-2 transition-all touch-manipulation
-                        ${m2===x.id
-                          ?'border-indigo-500 bg-indigo-500 text-white shadow-sm shadow-indigo-200'
-                          :'border-gray-100 bg-gray-50 text-gray-700 active:border-indigo-200'}`}>
-                      {x.name}
-                    </button>
-                  ))}
-                </div>
+                )}
               </div>
             </div>
-          )}
+
+            {/* 당번 2 */}
+            <div className="mb-5">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">당번 2</p>
+              <div className="grid grid-cols-2 gap-2">
+                {opts2.map((x,i)=>{
+                  const c = getMemberColor(members.findIndex(m=>m.id===x.id))
+                  const sel = m2===x.id
+                  return (
+                    <button key={x.id} onClick={()=>setM2(sel?'':x.id)}
+                      className="py-4 rounded-2xl text-base font-bold touch-manipulation transition-all active:scale-95"
+                      style={{
+                        background: sel?c.bg:c.light,
+                        color: sel?'#fff':c.bg,
+                        border: `2px solid ${sel?c.bg:'transparent'}`,
+                        boxShadow: sel?`0 4px 12px ${c.bg}40`:undefined
+                      }}>
+                      {x.name}
+                    </button>
+                  )
+                })}
+                {m2&&(
+                  <button onClick={()=>setM2('')}
+                    className="py-4 rounded-2xl text-base font-bold text-gray-400 touch-manipulation"
+                    style={{background:'#F5F5F5',border:'2px solid transparent'}}>
+                    선택 해제
+                  </button>
+                )}
+              </div>
+            </div>
+          </>}
 
           {/* 메모 */}
           <div className="mb-6">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">메모</p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">메모</p>
             <input type="text" value={note} onChange={e=>setNote(e.target.value)}
-              placeholder="특이사항 입력 (선택)"
-              className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-200 rounded-2xl px-4 py-3 text-sm focus:outline-none transition-colors"/>
+              placeholder="특이사항을 입력하세요"
+              className="w-full rounded-2xl px-4 py-4 text-base focus:outline-none transition-colors"
+              style={{background:'#F5F5F5',border:'2px solid transparent'}}
+              onFocus={e=>{e.target.style.borderColor='#6366f1'}}
+              onBlur={e=>{e.target.style.borderColor='transparent'}}/>
           </div>
 
-          {/* 버튼 */}
+          {/* 저장/취소 버튼 */}
           <div className="flex gap-3">
             <button onClick={onClose}
-              className="flex-1 py-3.5 rounded-2xl bg-gray-100 text-gray-600 text-sm font-semibold touch-manipulation active:bg-gray-200">
+              className="py-4 rounded-2xl text-base font-bold text-gray-500 touch-manipulation active:bg-gray-200"
+              style={{background:'#F0F0F0',width:'30%'}}>
               취소
             </button>
             <button onClick={save} disabled={saving}
-              className="flex-2 px-8 py-3.5 rounded-2xl text-white text-sm font-bold touch-manipulation active:opacity-90 disabled:opacity-50 transition-opacity"
-              style={{background:'linear-gradient(135deg,#6366f1,#8b5cf6)',flexGrow:2}}>
+              className="py-4 rounded-2xl text-base font-bold text-white touch-manipulation active:opacity-90 disabled:opacity-50 flex-1"
+              style={{background:saving?'#9CA3AF':'#6366f1',boxShadow:'0 4px 16px #6366f140'}}>
               {saving?'저장 중…':'저장하기'}
             </button>
           </div>
