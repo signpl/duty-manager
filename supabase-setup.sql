@@ -35,17 +35,16 @@ CREATE TRIGGER schedules_updated_at
   BEFORE UPDATE ON schedules
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
--- 4. Row Level Security (로그인한 사용자만 접근 가능)
+-- 4. Row Level Security - 로그인 없이 누구나 읽기/쓰기 가능
 ALTER TABLE team_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE schedules ENABLE ROW LEVEL SECURITY;
 
--- 팀원 테이블: 로그인한 사용자 모두 읽기/쓰기 가능
-CREATE POLICY "authenticated_all_team_members" ON team_members
-  FOR ALL USING (auth.role() = 'authenticated');
+-- anon(비로그인) 사용자도 모두 허용
+CREATE POLICY "public_all_team_members" ON team_members
+  FOR ALL TO anon USING (true) WITH CHECK (true);
 
--- 스케줄 테이블: 로그인한 사용자 모두 읽기/쓰기 가능
-CREATE POLICY "authenticated_all_schedules" ON schedules
-  FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "public_all_schedules" ON schedules
+  FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- 5. Realtime 활성화
 ALTER PUBLICATION supabase_realtime ADD TABLE team_members;
