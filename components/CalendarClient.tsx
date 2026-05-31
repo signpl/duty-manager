@@ -7,6 +7,7 @@ import DayModal from './DayModal'
 import NameModal from './NameModal'
 import { getMemberColor } from '@/lib/colors'
 import { getHolidayName, isRedDay } from '@/lib/holidays'
+import EmojiPicker from './EmojiPicker'
 
 interface Member { id: string; name: string }
 interface Schedule {
@@ -50,7 +51,10 @@ export default function CalendarClient() {
   const [showNameModal, setShowNameModal] = useState(false)
   const [priorities, setPriorities] = useState('')
   const [notes, setNotes]           = useState('')
+  const [emojiTarget, setEmojiTarget] = useState<'priorities'|'notes'|null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout>|null>(null)
+  const prioritiesRef = useRef<HTMLTextAreaElement|null>(null)
+  const notesRef      = useRef<HTMLTextAreaElement|null>(null)
 
   const supabase = createClient()
   const monthKey = `${yr}-${pad(mo+1)}`
@@ -278,78 +282,38 @@ export default function CalendarClient() {
         <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10}}>
 
           {/* PRIORITIES */}
-          <div style={{
-            background:'#fff', borderRadius:14,
-            border:'1.5px solid #D1D5DB',
-            display:'flex', flexDirection:'column', overflow:'hidden',
-          }}>
-            {/* 라벨 */}
-            <div style={{display:'flex', justifyContent:'center', padding:'10px 12px 0'}}>
-              <div style={{
-                border:'1.5px solid #D1D5DB', borderRadius:99,
-                padding:'3px 14px', fontSize:10, fontWeight:800,
-                color:'#374151', letterSpacing:'0.1em',
-              }}>PRIORITIES</div>
+          <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #D1D5DB', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 10px 0' }}>
+              <div style={{ border:'1.5px solid #D1D5DB', borderRadius:99, padding:'3px 10px', fontSize:10, fontWeight:800, color:'#374151', letterSpacing:'0.1em' }}>PRIORITIES</div>
+              <button onClick={()=>setEmojiTarget('priorities')} style={{ fontSize:16, background:'none', border:'none', cursor:'pointer', opacity:0.6, lineHeight:1, padding:2 }}>😊</button>
             </div>
-            {/* 라인 배경 텍스트에어리어 */}
-            <div style={{position:'relative', flex:1, padding:'8px 14px 12px'}}>
-              {/* 배경 줄선 */}
+            <div style={{ position:'relative', flex:1, padding:'6px 12px 10px' }}>
               {[0,1,2,3,4,5].map(i=>(
-                <div key={i} style={{
-                  position:'absolute', left:14, right:14,
-                  top: `${32 + i*28}px`,
-                  borderBottom:'1px solid #E5E7EB',
-                }}/>
+                <div key={i} style={{ position:'absolute', left:12, right:12, top:`${28+i*27}px`, borderBottom:'1px solid #E5E7EB' }}/>
               ))}
               <textarea
+                ref={prioritiesRef}
                 value={priorities}
-                onChange={e=>{
-                  setPriorities(e.target.value)
-                  saveMemos(e.target.value, notes)
-                }}
-                placeholder={`• \n• \n• \n• \n• `}
-                style={{
-                  width:'100%', height:190,
-                  background:'transparent', border:'none', outline:'none',
-                  resize:'none', fontSize:12, color:'#374151',
-                  lineHeight:'28px', fontFamily:'inherit',
-                  position:'relative', zIndex:1,
-                }}
+                onChange={e=>{ setPriorities(e.target.value); saveMemos(e.target.value,notes) }}
+                placeholder={'• \n• \n• \n• \n• '}
+                style={{ width:'100%', height:185, background:'transparent', border:'none', outline:'none', resize:'none', fontSize:12, color:'#374151', lineHeight:'27px', fontFamily:'inherit', position:'relative', zIndex:1 }}
               />
             </div>
           </div>
 
           {/* NOTES */}
-          <div style={{
-            background:'#fff', borderRadius:14,
-            border:'1.5px solid #D1D5DB',
-            display:'flex', flexDirection:'column', overflow:'hidden',
-          }}>
-            {/* 라벨 */}
-            <div style={{display:'flex', justifyContent:'center', padding:'10px 12px 0'}}>
-              <div style={{
-                border:'1.5px solid #D1D5DB', borderRadius:99,
-                padding:'3px 14px', fontSize:10, fontWeight:800,
-                color:'#374151', letterSpacing:'0.1em',
-              }}>NOTES</div>
+          <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #D1D5DB', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 10px 0' }}>
+              <div style={{ border:'1.5px solid #D1D5DB', borderRadius:99, padding:'3px 10px', fontSize:10, fontWeight:800, color:'#374151', letterSpacing:'0.1em' }}>NOTES</div>
+              <button onClick={()=>setEmojiTarget('notes')} style={{ fontSize:16, background:'none', border:'none', cursor:'pointer', opacity:0.6, lineHeight:1, padding:2 }}>😊</button>
             </div>
-            {/* 텍스트에어리어 */}
-            <div style={{padding:'8px 14px 12px', flex:1}}>
+            <div style={{ padding:'6px 12px 10px', flex:1 }}>
               <textarea
+                ref={notesRef}
                 value={notes}
-                onChange={e=>{
-                  setNotes(e.target.value)
-                  saveMemos(priorities, e.target.value)
-                }}
+                onChange={e=>{ setNotes(e.target.value); saveMemos(priorities,e.target.value) }}
                 placeholder="메모를 입력하세요..."
-                style={{
-                  width:'100%', height:190,
-                  background:'#F3F4F6', border:'none', outline:'none',
-                  borderRadius:8, resize:'none', fontSize:12,
-                  color:'#374151', padding:'10px',
-                  lineHeight:1.6, fontFamily:'inherit',
-                  boxSizing:'border-box',
-                }}
+                style={{ width:'100%', height:185, background:'#F3F4F6', border:'none', outline:'none', borderRadius:8, resize:'none', fontSize:12, color:'#374151', padding:'10px', lineHeight:1.6, fontFamily:'inherit', boxSizing:'border-box' }}
               />
             </div>
           </div>
@@ -374,6 +338,24 @@ export default function CalendarClient() {
         <NameModal currentName={userName} members={members}
           onSave={name=>{localStorage.setItem('duty_user_name',name);setUserName(name);setShowNameModal(false)}}
           onClose={userName?()=>setShowNameModal(false):undefined}/>
+      )}
+
+      {/* 이모지 피커 — PRIORITIES / NOTES 용 */}
+      {emojiTarget && (
+        <EmojiPicker
+          onSelect={emoji => {
+            if (emojiTarget === 'priorities') {
+              const next = priorities + emoji + ' '
+              setPriorities(next); saveMemos(next, notes)
+              setTimeout(() => prioritiesRef.current?.focus(), 30)
+            } else {
+              const next = notes + emoji + ' '
+              setNotes(next); saveMemos(priorities, next)
+              setTimeout(() => notesRef.current?.focus(), 30)
+            }
+          }}
+          onClose={() => setEmojiTarget(null)}
+        />
       )}
     </div>
   )
