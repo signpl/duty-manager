@@ -103,8 +103,8 @@ export default function DayModal({ date, schedule, members, onClose, onSaved }: 
     setSaving(true)
     const payload = {
       date,
-      member1_id: isOff ? null : (m1||null),
-      member2_id: isOff ? null : (m2||null),
+      member1_id: m1 || null,
+      member2_id: m2 || null,
       is_off: isOff,
       note: joinMemo(items) || null,
     }
@@ -169,13 +169,9 @@ export default function DayModal({ date, schedule, members, onClose, onSaved }: 
               </div>
             </button>
 
-            {/* 당번 선택 */}
-            {!isOff && (
-              <>
-                <PickerRow label="당번 1" selected={m1} options={opts1} members={members} onSelect={setM1}/>
-                <PickerRow label="당번 2" selected={m2} options={opts2} members={members} onSelect={setM2}/>
-              </>
-            )}
+            {/* 당번 선택 — 휴무일이어도 배정 가능 */}
+            <PickerRow label="당번 1" selected={m1} options={opts1} members={members} onSelect={setM1}/>
+            <PickerRow label="당번 2" selected={m2} options={opts2} members={members} onSelect={setM2}/>
 
             {/* 메모 */}
             <div style={{ marginBottom:20 }}>
