@@ -49,3 +49,17 @@ CREATE POLICY "public_all_schedules" ON schedules
 -- 5. Realtime 활성화
 ALTER PUBLICATION supabase_realtime ADD TABLE team_members;
 ALTER PUBLICATION supabase_realtime ADD TABLE schedules;
+
+-- ================================================
+-- [마이그레이션] 권한(role) 컬럼 추가
+-- 이미 team_members 테이블이 있는 경우 아래 SQL을 실행하세요
+-- ================================================
+
+-- 6. role 컬럼 추가 (admin / editor / viewer)
+ALTER TABLE team_members ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'viewer';
+
+-- 7. 장정아를 관리자로 설정 (이미 등록된 경우)
+UPDATE team_members SET role = 'admin' WHERE name = '장정아';
+
+-- ※ 장정아가 아직 추가되지 않은 경우, 앱에서 팀원 추가 후 아래 SQL을 따로 실행하세요:
+-- UPDATE team_members SET role = 'admin' WHERE name = '장정아';

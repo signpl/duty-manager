@@ -9,7 +9,7 @@ import { getMemberColor } from '@/lib/colors'
 import { getHolidayName, isRedDay } from '@/lib/holidays'
 import EmojiPicker from './EmojiPicker'
 
-interface Member { id: string; name: string }
+interface Member { id: string; name: string; role: string }
 interface Schedule {
   id: string; date: string
   member1_id: string|null; member2_id: string|null
@@ -49,6 +49,7 @@ export default function CalendarClient() {
   const [loading, setLoading]   = useState(true)
   const [userName, setUserName] = useState<string|null>(null)
   const [showNameModal, setShowNameModal] = useState(false)
+  const [userRole, setUserRole] = useState<string>('viewer')
   const [priorities, setPriorities] = useState('')
   const [notes, setNotes]           = useState('')
   const [emojiTarget, setEmojiTarget] = useState<'priorities'|'notes'|null>(null)
@@ -64,6 +65,13 @@ export default function CalendarClient() {
     const saved = localStorage.getItem('duty_user_name')
     if (saved) setUserName(saved); else setShowNameModal(true)
   }, [])
+
+  // 멤버 로드 후 권한 계산
+  useEffect(() => {
+    if (!userName || members.length === 0) return
+    const me = members.find(m => m.name === userName)
+    setUserRole(me?.role ?? 'viewer')
+  }, [userName, members])
 
   // 월별 메모 로드
   useEffect(() => {
@@ -131,6 +139,8 @@ export default function CalendarClient() {
 
   const todayStr = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`
   const userColor = getMemberColor(members.findIndex(m=>m.name===userName))
+  const isAdmin = userRole === 'admin'
+  const canEdit = userRole === 'admin' || userRole === 'editor'
 
   return (
     <div style={{minHeight:'100dvh', background:'#F5F5F0', colorScheme:'light', display:'flex', flexDirection:'column'}}>
@@ -145,15 +155,22 @@ export default function CalendarClient() {
             </div>
             {/* 우측 컨트롤 */}
             <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6}}>
-              <div style={{display:'flex', gap:6}}>
-                <Link href="/settings" style={{
-                  width:30, height:30, borderRadius:'50%', background:'#E0DDD5',
-                  display:'flex', alignItems:'center', justifyContent:'center', color:'#555',
-                }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-                  </svg>
-                </Link>
+              <div style={{display:'flex', alignItems:'center', gap:6}}>
+                {!canEdit && userName && (
+                  <span style={{fontSize:9, fontWeight:800, color:'#9CA3AF', background:'#E5E7EB', padding:'3px 8px', borderRadius:99, letterSpacing:'0.05em'}}>
+                    🔒 읽기 전용
+                  </span>
+                )}
+                {isAdmin && (
+                  <Link href="/settings" style={{
+                    width:30, height:30, borderRadius:'50%', background:'#E0DDD5',
+                    display:'flex', alignItems:'center', justifyContent:'center', color:'#555',
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                    </svg>
+                  </Link>
+                )}
                 {userName && (
                   <button onClick={()=>setShowNameModal(true)} style={{
                     width:30, height:30, borderRadius:'50%',
@@ -219,7 +236,7 @@ export default function CalendarClient() {
             return (
               <button key={dateStr}
                 onClick={()=>{
-                  if(!showNameModal) {
+                  if(!showNameModal && canEdit) {
                     scrollY.current = window.scrollY
                     setSelectedDate(dateStr)
                   }
@@ -227,8 +244,8 @@ export default function CalendarClient() {
                 style={{
                   minHeight:82, background:cellBg, borderRadius:10,
                   padding:'5px 5px 4px', display:'flex', flexDirection:'column',
-                  gap:2, border:'none', cursor:'pointer', textAlign:'left',
-                  position:'relative', outline:'none',
+                  gap:2, border:'none', cursor: canEdit ? 'pointer' : 'default',
+                  textAlign:'left', position:'relative', outline:'none',
                   boxShadow: isToday ? '0 0 0 2px #6366f1' : 'none',
                 }}
               >
@@ -291,7 +308,7 @@ export default function CalendarClient() {
           <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #D1D5DB', display:'flex', flexDirection:'column', overflow:'hidden' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 10px 0' }}>
               <div style={{ border:'1.5px solid #D1D5DB', borderRadius:99, padding:'3px 10px', fontSize:10, fontWeight:800, color:'#374151', letterSpacing:'0.1em' }}>PRIORITIES</div>
-              <button onClick={()=>setEmojiTarget('priorities')} style={{ fontSize:16, background:'none', border:'none', cursor:'pointer', opacity:0.6, lineHeight:1, padding:2 }}>😊</button>
+              {canEdit && <button onClick={()=>setEmojiTarget('priorities')} style={{ fontSize:16, background:'none', border:'none', cursor:'pointer', opacity:0.6, lineHeight:1, padding:2 }}>😊</button>}
             </div>
             <div style={{ position:'relative', flex:1, padding:'6px 12px 10px' }}>
               {[0,1,2,3,4,5].map(i=>(
@@ -300,9 +317,10 @@ export default function CalendarClient() {
               <textarea
                 ref={prioritiesRef}
                 value={priorities}
-                onChange={e=>{ setPriorities(e.target.value); saveMemos(e.target.value,notes) }}
-                placeholder={'• \n• \n• \n• \n• '}
-                style={{ width:'100%', height:185, background:'transparent', border:'none', outline:'none', resize:'none', fontSize:12, color:'#374151', lineHeight:'27px', fontFamily:'inherit', position:'relative', zIndex:1 }}
+                readOnly={!canEdit}
+                onChange={e=>{ if(canEdit){ setPriorities(e.target.value); saveMemos(e.target.value,notes) } }}
+                placeholder={canEdit ? '• \n• \n• \n• \n• ' : ''}
+                style={{ width:'100%', height:185, background:'transparent', border:'none', outline:'none', resize:'none', fontSize:12, color:'#374151', lineHeight:'27px', fontFamily:'inherit', position:'relative', zIndex:1, cursor: canEdit ? 'text' : 'default' }}
               />
             </div>
           </div>
@@ -311,15 +329,16 @@ export default function CalendarClient() {
           <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #D1D5DB', display:'flex', flexDirection:'column', overflow:'hidden' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 10px 0' }}>
               <div style={{ border:'1.5px solid #D1D5DB', borderRadius:99, padding:'3px 10px', fontSize:10, fontWeight:800, color:'#374151', letterSpacing:'0.1em' }}>NOTES</div>
-              <button onClick={()=>setEmojiTarget('notes')} style={{ fontSize:16, background:'none', border:'none', cursor:'pointer', opacity:0.6, lineHeight:1, padding:2 }}>😊</button>
+              {canEdit && <button onClick={()=>setEmojiTarget('notes')} style={{ fontSize:16, background:'none', border:'none', cursor:'pointer', opacity:0.6, lineHeight:1, padding:2 }}>😊</button>}
             </div>
             <div style={{ padding:'6px 12px 10px', flex:1 }}>
               <textarea
                 ref={notesRef}
                 value={notes}
-                onChange={e=>{ setNotes(e.target.value); saveMemos(priorities,e.target.value) }}
-                placeholder="메모를 입력하세요..."
-                style={{ width:'100%', height:185, background:'#F3F4F6', border:'none', outline:'none', borderRadius:8, resize:'none', fontSize:12, color:'#374151', padding:'10px', lineHeight:1.6, fontFamily:'inherit', boxSizing:'border-box' }}
+                readOnly={!canEdit}
+                onChange={e=>{ if(canEdit){ setNotes(e.target.value); saveMemos(priorities,e.target.value) } }}
+                placeholder={canEdit ? '메모를 입력하세요...' : ''}
+                style={{ width:'100%', height:185, background:'#F3F4F6', border:'none', outline:'none', borderRadius:8, resize:'none', fontSize:12, color:'#374151', padding:'10px', lineHeight:1.6, fontFamily:'inherit', boxSizing:'border-box', cursor: canEdit ? 'text' : 'default' }}
               />
             </div>
           </div>
@@ -354,7 +373,7 @@ export default function CalendarClient() {
       )}
 
       {/* 이모지 피커 — PRIORITIES / NOTES 용 */}
-      {emojiTarget && (
+      {emojiTarget && canEdit && (
         <EmojiPicker
           onSelect={emoji => {
             if (emojiTarget === 'priorities') {
