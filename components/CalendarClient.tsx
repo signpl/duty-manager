@@ -9,6 +9,7 @@ import NameModal from './NameModal'
 interface Member {
   id: string
   name: string
+  is_admin: boolean
 }
 
 interface Schedule {
@@ -33,6 +34,7 @@ export default function CalendarClient() {
   const [loading, setLoading] = useState(true)
   const [userName, setUserName] = useState<string | null>(null)
   const [showNameModal, setShowNameModal] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   const supabase = createClient()
 
@@ -48,7 +50,14 @@ export default function CalendarClient() {
 
   const fetchMembers = useCallback(async () => {
     const { data } = await supabase.from('team_members').select('*').order('name')
-    setMembers(data || [])
+    const list = data || []
+    setMembers(list)
+    // 현재 로그인된 이름으로 관리자 여부 갱신
+    const saved = localStorage.getItem('duty_user_name')
+    if (saved) {
+      const member = list.find((m: Member) => m.name === saved)
+      setIsAdmin(member?.is_admin || false)
+    }
   }, [])
 
   const fetchSchedules = useCallback(async () => {
@@ -87,9 +96,16 @@ export default function CalendarClient() {
     return () => { supabase.removeChannel(channel) }
   }, [fetchSchedules, fetchMembers])
 
+  // 이름 저장 시 관리자 여부 업데이트
+  const updateAdminStatus = (name: string, memberList: Member[]) => {
+    const member = memberList.find(m => m.name === name)
+    setIsAdmin(member?.is_admin || false)
+  }
+
   const handleNameSave = (name: string) => {
     localStorage.setItem('duty_user_name', name)
     setUserName(name)
+    updateAdminStatus(name, members)
     setShowNameModal(false)
   }
 
@@ -147,6 +163,9 @@ export default function CalendarClient() {
                   {userName[0]}
                 </span>
                 {userName}
+                {isAdmin && (
+                  <span className="text-xs bg-indigo-500 text-white px-1.5 py-0.5 rounded-full font-medium">관리자</span>
+                )}
               </button>
             )}
           </div>
@@ -265,6 +284,7 @@ export default function CalendarClient() {
           date={selectedDate}
           schedule={getScheduleForDate(selectedDate)}
           members={members}
+          isAdmin={isAdmin}
           onClose={() => setSelectedDate(null)}
           onSaved={fetchSchedules}
         />

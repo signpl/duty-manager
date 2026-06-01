@@ -21,11 +21,12 @@ interface Props {
   date: string
   schedule: Schedule | null
   members: Member[]
+  isAdmin: boolean
   onClose: () => void
   onSaved: () => void
 }
 
-export default function DayModal({ date, schedule, members, onClose, onSaved }: Props) {
+export default function DayModal({ date, schedule, members, isAdmin, onClose, onSaved }: Props) {
   const [member1, setMember1] = useState(schedule?.member1_id || '')
   const [member2, setMember2] = useState(schedule?.member2_id || '')
   const [isOff, setIsOff] = useState(schedule?.is_off || false)
@@ -79,12 +80,21 @@ export default function DayModal({ date, schedule, members, onClose, onSaved }: 
           <button onClick={onClose} className="text-gray-300 hover:text-gray-500 text-2xl leading-none">×</button>
         </div>
 
+        {/* 비관리자 안내 */}
+        {!isAdmin && (
+          <div className="mb-4 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-500">
+            <span>🔒</span>
+            <span>읽기 전용 — 편집 권한이 없습니다</span>
+          </div>
+        )}
+
         {/* 휴무 */}
-        <label className="flex items-center gap-3 mb-5 p-3 bg-amber-50 rounded-xl cursor-pointer">
+        <label className={`flex items-center gap-3 mb-5 p-3 bg-amber-50 rounded-xl ${isAdmin ? 'cursor-pointer' : 'cursor-default opacity-60'}`}>
           <input
             type="checkbox"
             checked={isOff}
-            onChange={e => setIsOff(e.target.checked)}
+            onChange={e => isAdmin && setIsOff(e.target.checked)}
+            disabled={!isAdmin}
             className="w-4 h-4 accent-amber-500"
           />
           <span className="text-sm font-medium text-amber-700">휴무일</span>
@@ -97,7 +107,8 @@ export default function DayModal({ date, schedule, members, onClose, onSaved }: 
               <select
                 value={member1}
                 onChange={e => setMember1(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
+                disabled={!isAdmin}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white disabled:bg-gray-50 disabled:text-gray-400"
               >
                 <option value="">선택 안함</option>
                 {members.map(m => (
@@ -111,7 +122,8 @@ export default function DayModal({ date, schedule, members, onClose, onSaved }: 
               <select
                 value={member2}
                 onChange={e => setMember2(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
+                disabled={!isAdmin}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white disabled:bg-gray-50 disabled:text-gray-400"
               >
                 <option value="">선택 안함</option>
                 {members.map(m => (
@@ -128,13 +140,14 @@ export default function DayModal({ date, schedule, members, onClose, onSaved }: 
             type="text"
             value={note}
             onChange={e => setNote(e.target.value)}
-            placeholder="선택 사항"
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            placeholder={isAdmin ? "선택 사항" : "—"}
+            disabled={!isAdmin}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:bg-gray-50 disabled:text-gray-400"
           />
         </div>
 
         <div className="flex gap-2">
-          {schedule && (
+          {isAdmin && schedule && (
             <button
               onClick={handleDelete}
               className="px-3 py-2.5 text-sm text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
@@ -146,15 +159,17 @@ export default function DayModal({ date, schedule, members, onClose, onSaved }: 
             onClick={onClose}
             className="flex-1 py-2.5 text-sm text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
           >
-            취소
+            {isAdmin ? '취소' : '닫기'}
           </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex-1 py-2.5 text-sm text-white bg-indigo-500 hover:bg-indigo-600 rounded-xl transition-colors font-medium disabled:opacity-50"
-          >
-            {saving ? '저장 중…' : '저장'}
-          </button>
+          {isAdmin && (
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 py-2.5 text-sm text-white bg-indigo-500 hover:bg-indigo-600 rounded-xl transition-colors font-medium disabled:opacity-50"
+            >
+              {saving ? '저장 중…' : '저장'}
+            </button>
+          )}
         </div>
       </div>
     </div>
