@@ -357,6 +357,7 @@ export default function CalendarClient() {
 
       {selectedDate&&!showNameModal&&(
         <DayModal date={selectedDate} schedule={getSch(selectedDate)} members={members}
+          canEdit={canEdit}
           onClose={()=>{
             setSelectedDate(null)
             setTimeout(()=>window.scrollTo({ top:scrollY.current, behavior:'instant' }), 30)
