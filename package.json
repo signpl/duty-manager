@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "deploy:main": "node scripts/deploy.js duty-manager",
+    "deploy:branch": "node scripts/deploy.js duty-manager-2"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

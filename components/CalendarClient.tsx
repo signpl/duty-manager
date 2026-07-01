@@ -118,7 +118,7 @@ export default function CalendarClient() {
       .on('postgres_changes',{event:'*',schema:'public',table:'team_members'}, fetchMembers)
       .on('postgres_changes',{event:'*',schema:'public',table:'monthly_notes'},() => {
         supabase.from('monthly_notes').select('*').eq('year_month',monthKey).single()
-          .then(({data}) => { if(data){ setPriorities(data.priorities||''); setNotes(data.notes||'') } })
+          .then(({data}: {data: {priorities?: string; notes?: string} | null}) => { if(data){ setPriorities(data.priorities||''); setNotes(data.notes||'') } })
       })
       .subscribe()
     return () => { supabase.removeChannel(ch) }

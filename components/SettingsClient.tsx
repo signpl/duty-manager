@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { getMemberColor } from '@/lib/colors'
@@ -20,7 +20,7 @@ export default function SettingsClient() {
   const [initialLoaded, setInitialLoaded] = useState(false)
   const [userName, setUserName] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     const name = localStorage.getItem('duty_user_name')
@@ -41,8 +41,17 @@ export default function SettingsClient() {
   const add = async () => {
     if (!newName.trim()) return
     setLoading(true)
-    await supabase.from('team_members').insert({ name: newName.trim(), role: 'viewer' })
-    setNewName(''); await fetchMembers(); setLoading(false)
+    const isFirst = members.length === 0
+    const role = isFirst ? 'admin' : 'viewer'
+    const addedName = newName.trim()
+    await supabase.from('team_members').insert({ name: addedName, role })
+    if (isFirst) {
+      localStorage.setItem('duty_user_name', addedName)
+      setUserName(addedName)
+    }
+    setNewName('')
+    await fetchMembers(isFirst ? addedName : undefined)
+    setLoading(false)
   }
 
   const update = async (id: string) => {
