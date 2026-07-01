@@ -79,8 +79,8 @@ export default function SettingsClient() {
     )
   }
 
-  // 관리자 아닌 경우
-  if (!isAdmin) {
+  // 팀원이 없으면 초기 설정 허용 (닭-달걀 문제 방지)
+  if (!isAdmin && members.length > 0) {
     return (
       <div style={{ minHeight: '100dvh', background: BG, colorScheme: 'light', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 }}>
         <div style={{ fontSize: 48 }}>🔒</div>

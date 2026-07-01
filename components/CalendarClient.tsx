@@ -141,6 +141,8 @@ export default function CalendarClient() {
   const userColor = getMemberColor(members.findIndex(m=>m.name===userName))
   const isAdmin = userRole === 'admin'
   const canEdit = userRole === 'admin' || userRole === 'editor'
+  // 팀원이 아무도 없으면 초기 설정을 위해 설정 아이콘 노출
+  const showSettings = isAdmin || members.length === 0
 
   return (
     <div style={{minHeight:'100dvh', background:'#F5F5F0', colorScheme:'light', display:'flex', flexDirection:'column'}}>
@@ -161,7 +163,7 @@ export default function CalendarClient() {
                     🔒 읽기 전용
                   </span>
                 )}
-                {isAdmin && (
+                {showSettings && (
                   <Link href="/settings" style={{
                     width:30, height:30, borderRadius:'50%', background:'#E0DDD5',
                     display:'flex', alignItems:'center', justifyContent:'center', color:'#555',
