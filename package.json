@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "deploy:main": "node scripts/deploy.js duty-manager",
-    "deploy:branch": "node scripts/deploy.js duty-manager-2"
+    "deploy:branch": "node scripts/deploy.js duty-manager-2",
+    "backup": "node scripts/backup.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

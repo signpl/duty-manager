@@ -42,3 +42,6 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# DB 백업 (팀원 실명 등 개인정보 포함 → GitHub에 올리지 않음, 로컬 전용)
+/backups
