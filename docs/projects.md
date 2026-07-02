@@ -4,10 +4,15 @@
 서비스로 운영한다. 코드는 공유하지만 **Supabase 프로젝트(DB)와 Vercel 배포는 완전히
 분리**되어 있다.
 
-| 구분 | 용도 | Vercel 프로젝트 | Supabase 프로젝트 | 배포 명령 |
-|---|---|---|---|---|
-| **duty-manager** | 화성지점 | `prj_UE5sGaJCMQS7PO4qn01b1Hrt5Ltl` (duty-manager.vercel.app) | (화성지점용 Supabase project) | `npm run deploy:main` |
-| **duty-manager-2** | 분점 | `prj_OWoqiX7HRwalBZz7vqod0MoFAYmk` (duty-manager-2.vercel.app) | `qqxjaakunjaytzrngttu` | `npm run deploy:branch` |
+| 구분 | 용도 | 화면 표시 이름 | Vercel 프로젝트 | Supabase 프로젝트 | 배포 명령 |
+|---|---|---|---|---|---|
+| **duty-manager** | 화성지점 | `e - Mt` | `prj_UE5sGaJCMQS7PO4qn01b1Hrt5Ltl` (duty-manager.vercel.app) | (화성지점용 Supabase project) | `npm run deploy:main` |
+| **duty-manager-2** | 분점 | `easy` | `prj_OWoqiX7HRwalBZz7vqod0MoFAYmk` (duty-manager-2.vercel.app) | `qqxjaakunjaytzrngttu` | `npm run deploy:branch` |
+
+> **화면 표시 이름**은 스케줄러(달력) 상단 타이틀 위에 작은 라벨로 표시된다.
+> 지점별로 다르게 나오도록 Vercel 환경변수 `NEXT_PUBLIC_APP_NAME`(Production)으로 관리하며,
+> 라벨은 대문자 스타일이라 실제 화면에는 `E - MT` / `EASY`로 보인다.
+> 값을 바꾸면 `NEXT_PUBLIC_` 변수 특성상 반드시 해당 프로젝트를 **재배포**해야 반영된다.
 
 두 프로젝트 모두 org: `team_r5fa93CNscOnBSRQGjiiE4mt` (signpls-projects) 소속.
 

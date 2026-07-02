@@ -152,8 +152,15 @@ export default function CalendarClient() {
         <div style={{maxWidth:640, margin:'0 auto', padding:'12px 14px 8px'}}>
           <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between'}}>
             {/* 타이틀 */}
-            <div style={{fontSize:28, fontWeight:900, color:'#1a1a1a', letterSpacing:'-0.03em', lineHeight:1.05}}>
-              MONTHLY<br/>PLANNER
+            <div>
+              {process.env.NEXT_PUBLIC_APP_NAME && (
+                <div style={{fontSize:11, fontWeight:800, color:'#9CA3AF', letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:4}}>
+                  {process.env.NEXT_PUBLIC_APP_NAME}
+                </div>
+              )}
+              <div style={{fontSize:28, fontWeight:900, color:'#1a1a1a', letterSpacing:'-0.03em', lineHeight:1.05}}>
+                MONTHLY<br/>PLANNER
+              </div>
             </div>
             {/* 우측 컨트롤 */}
             <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6}}>
